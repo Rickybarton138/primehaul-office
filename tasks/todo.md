@@ -3,14 +3,14 @@
 ## Sprint 1: Foundation (Current)
 - [x] Scaffold project structure
 - [x] CLAUDE.md + tasks
-- [ ] Core modules: config, database, auth, dependencies, models, error_tracking
-- [ ] Main FastAPI app with health check
-- [ ] Company + User models (with franchise fields)
-- [ ] Login/signup flow (Jinja2)
-- [ ] Admin dashboard shell
-- [ ] Alembic setup + initial migration
-- [ ] requirements.txt + railway.json + startup.py
-- [ ] GitHub repo created
+- [x] Core modules: config, database, auth, dependencies, models, error_tracking
+- [x] Main FastAPI app with health check
+- [x] Company + User models (with franchise fields)
+- [x] Login/signup flow (Jinja2)
+- [x] Admin dashboard shell
+- [x] Alembic setup + initial migration
+- [x] requirements.txt + railway.json + startup.py
+- [x] GitHub repo created (Rickybarton138/primehaul-office)
 - [ ] Tests: health, auth
 
 ## Sprint 2: Staff, Vehicles, Diary
