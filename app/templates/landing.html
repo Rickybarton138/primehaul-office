@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}PrimeHaul Office Manager — Back-Office Automation for Removal Companies{% endblock %}
+
+{% block body %}
+<div class="min-h-screen bg-prime-dark flex flex-col">
+    <!-- Nav -->
+    <nav class="flex items-center justify-between px-6 py-4 max-w-7xl mx-auto w-full">
+        <div class="flex items-center gap-2">
+            <div class="w-8 h-8 bg-prime rounded-lg flex items-center justify-center font-bold text-prime-dark text-sm">PH</div>
+            <span class="text-white font-semibold text-lg">Office Manager</span>
+        </div>
+        <div class="flex gap-3">
+            <a href="/login" class="text-gray-300 hover:text-white px-4 py-2 text-sm">Log in</a>
+            <a href="/signup" class="bg-prime text-prime-dark font-semibold px-4 py-2 rounded-lg text-sm hover:bg-green-300 transition">Start Free Trial</a>
+        </div>
+    </nav>
+
+    <!-- Hero -->
+    <main class="flex-1 flex items-center justify-center px-6">
+        <div class="max-w-3xl text-center">
+            <h1 class="text-4xl md:text-6xl font-bold text-white leading-tight mb-6">
+                Run your removal company<br>
+                <span class="text-prime">from one screen</span>
+            </h1>
+            <p class="text-gray-400 text-lg md:text-xl mb-8 max-w-2xl mx-auto">
+                Leads, diary, vehicles, crew, materials, reviews, SEO &amp; social — all automated.
+                Built for UK removal companies. AI-powered. £149/mo.
+            </p>
+            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                <a href="/signup" class="bg-prime text-prime-dark font-bold px-8 py-3 rounded-lg text-lg hover:bg-green-300 transition">
+                    Start 14-Day Free Trial
+                </a>
+                <a href="#features" class="border border-gray-600 text-gray-300 font-semibold px-8 py-3 rounded-lg text-lg hover:border-prime hover:text-prime transition">
+                    See Features
+                </a>
+            </div>
+            <p class="text-gray-500 text-sm mt-4">No credit card required. Cancel anytime.</p>
+        </div>
+    </main>
+
+    <!-- Features Grid -->
+    <section id="features" class="max-w-7xl mx-auto px-6 py-20">
+        <div class="grid md:grid-cols-3 gap-6">
+            {% for feature in [
+                ("Lead Ingestion", "Auto-import from PrimeHaul Leads, CompareMyMove, AnyVan. Manual entry too.", "📥"),
+                ("Diary & Scheduling", "Calendar view. Drag-and-drop job scheduling. Staff availability.", "📅"),
+                ("Vehicle Fleet", "Track MOT, insurance, tax expiry. Assign vehicles to jobs. Mileage logs.", "🚛"),
+                ("Crew Management", "Staff profiles, roles, availability. Assign crew to jobs. Time tracking.", "👥"),
+                ("Materials & Stock", "Track blankets, boxes, tape, fuel. Auto-reorder alerts when stock is low.", "📦"),
+                ("Review Automation", "Post-move emails to Google, Trustpilot, Facebook. Track click-through.", "⭐"),
+                ("Route Planning", "Optimise daily routes for multiple jobs. Minimise drive time.", "🗺️"),
+                ("Email Automation", "Quote follow-up, booking confirm, pre-move info, post-move review.", "📧"),
+                ("SEO & Social", "Auto-post to Facebook, Instagram, X. Local SEO landing pages.", "📱"),
+            ] %}
+            <div class="bg-prime-light/50 border border-gray-700 rounded-xl p-6">
+                <div class="text-3xl mb-3">{{ feature[2] }}</div>
+                <h3 class="text-white font-semibold text-lg mb-2">{{ feature[0] }}</h3>
+                <p class="text-gray-400 text-sm">{{ feature[1] }}</p>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <!-- Pricing -->
+    <section class="max-w-3xl mx-auto px-6 py-16 text-center">
+        <h2 class="text-3xl font-bold text-white mb-4">Simple pricing</h2>
+        <div class="bg-prime-light border border-gray-700 rounded-2xl p-8 mt-8">
+            <div class="text-prime text-5xl font-bold">£149<span class="text-lg text-gray-400">/mo</span></div>
+            <p class="text-gray-400 mt-2">Up to 10 users included. Extra users £9.99/mo each.</p>
+            <ul class="text-gray-300 text-left mt-6 space-y-2 max-w-md mx-auto">
+                <li>✓ Everything above — all features from day one</li>
+                <li>✓ Unlimited jobs, leads, vehicles</li>
+                <li>✓ Road Staff crew app included</li>
+                <li>✓ Email & chat support</li>
+                <li>✓ 14-day free trial, no card needed</li>
+            </ul>
+            <a href="/signup" class="inline-block mt-6 bg-prime text-prime-dark font-bold px-8 py-3 rounded-lg hover:bg-green-300 transition">
+                Start Free Trial
+            </a>
+        </div>
+        <p class="text-gray-500 text-sm mt-6">
+            Part of the PrimeHaul ecosystem. <strong class="text-gray-400">Franchise bundle: £349/mo</strong> — includes all PrimeHaul products + free leads + territory protection.
+        </p>
+    </section>
+
+    <!-- Footer -->
+    <footer class="border-t border-gray-800 py-6 text-center text-gray-500 text-sm">
+        &copy; 2026 PrimeHaul. All rights reserved.
+    </footer>
+</div>
+{% endblock %}
