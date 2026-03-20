@@ -1,0 +1,89 @@
+{% extends "base_app.html" %}
+{% set active_nav = "materials" %}
+{% block title %}Materials — {{ company.company_name }}{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-bold text-white">Materials & Stock</h1>
+    <div class="flex gap-2">
+        {% if not materials %}
+        <form method="POST" action="/materials/seed-defaults">
+            <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-500 transition">Load Defaults</button>
+        </form>
+        {% endif %}
+        <a href="/materials/add" class="bg-prime text-prime-dark font-semibold px-4 py-2 rounded-lg text-sm hover:bg-green-300 transition">+ Add Item</a>
+    </div>
+</div>
+
+<!-- Low Stock Alerts -->
+{% if low_stock %}
+<div class="bg-red-500/10 border border-red-500/30 rounded-xl p-4 mb-6">
+    <h3 class="text-red-400 font-semibold text-sm mb-2">Low Stock Alerts ({{ low_stock|length }})</h3>
+    <div class="flex flex-wrap gap-2">
+        {% for m in low_stock %}
+        <span class="bg-red-500/20 text-red-300 px-3 py-1 rounded-lg text-xs">
+            {{ m.item_name }}: {{ m.quantity_in_stock }} {{ m.unit }}s left (reorder at {{ m.reorder_threshold }})
+        </span>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Category Filter -->
+<div class="flex flex-wrap gap-2 mb-6">
+    <a href="/materials" class="px-3 py-1.5 rounded-lg text-sm {% if not active_category %}bg-prime text-prime-dark font-medium{% else %}bg-gray-800 text-gray-400{% endif %}">All</a>
+    {% for cat in categories %}
+    <a href="/materials?category={{ cat }}" class="px-3 py-1.5 rounded-lg text-sm {% if active_category == cat %}bg-prime text-prime-dark font-medium{% else %}bg-gray-800 text-gray-400{% endif %} capitalize">{{ cat|replace("_"," ") }}</a>
+    {% endfor %}
+</div>
+
+<div class="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden">
+    {% if materials %}
+    <table class="w-full">
+        <thead>
+            <tr class="text-gray-400 text-sm border-b border-gray-700">
+                <th class="text-left px-6 py-3 font-medium">Item</th>
+                <th class="text-left px-6 py-3 font-medium hidden md:table-cell">Category</th>
+                <th class="text-right px-6 py-3 font-medium">In Stock</th>
+                <th class="text-right px-6 py-3 font-medium hidden md:table-cell">Reorder At</th>
+                <th class="text-right px-6 py-3 font-medium hidden lg:table-cell">Unit Cost</th>
+                <th class="text-right px-6 py-3 font-medium">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for m in materials %}
+            <tr class="border-b border-gray-700/50 hover:bg-gray-700/30">
+                <td class="px-6 py-3">
+                    <div class="text-white text-sm font-medium">{{ m.item_name }}</div>
+                    {% if m.supplier_name %}<div class="text-gray-500 text-xs">{{ m.supplier_name }}</div>{% endif %}
+                </td>
+                <td class="px-6 py-3 text-gray-400 text-sm hidden md:table-cell capitalize">{{ m.category|replace("_"," ") }}</td>
+                <td class="px-6 py-3 text-right">
+                    <span class="text-sm font-medium {% if m.quantity_in_stock <= m.reorder_threshold %}text-red-400{% else %}text-white{% endif %}">
+                        {{ m.quantity_in_stock }}
+                    </span>
+                    <span class="text-gray-500 text-xs"> {{ m.unit }}s</span>
+                </td>
+                <td class="px-6 py-3 text-right text-gray-400 text-sm hidden md:table-cell">{{ m.reorder_threshold }}</td>
+                <td class="px-6 py-3 text-right text-gray-400 text-sm hidden lg:table-cell">£{{ "%.2f"|format(m.unit_cost_pence / 100) }}</td>
+                <td class="px-6 py-3 text-right">
+                    <div class="flex gap-1 justify-end">
+                        <form method="POST" action="/materials/{{ m.id }}/restock" class="flex gap-1">
+                            <input type="number" name="quantity" value="{{ m.reorder_quantity }}" min="1" class="w-16 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs text-center">
+                            <button type="submit" class="bg-green-600/20 text-green-400 px-2 py-1 rounded text-xs hover:bg-green-600/30">+Stock</button>
+                        </form>
+                        <a href="/materials/{{ m.id }}/edit" class="text-gray-400 hover:text-prime text-xs px-2 py-1">Edit</a>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="px-6 py-12 text-center text-gray-500">
+        <p class="text-lg mb-2">No materials tracked yet</p>
+        <p class="text-sm">Click "Load Defaults" to add standard removal materials, or add items manually.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

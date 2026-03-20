@@ -1,0 +1,71 @@
+{% extends "base_app.html" %}
+{% set active_nav = "materials" %}
+{% block title %}{{ "Edit" if editing else "Add" }} Material — {{ company.company_name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl">
+    <h1 class="text-2xl font-bold text-white mb-6">{{ "Edit" if editing else "Add" }} Material</h1>
+
+    <form method="POST" action="/materials/{% if editing %}{{ material.id }}/edit{% else %}add{% endif %}" class="space-y-6">
+        <div class="bg-gray-800 border border-gray-700 rounded-xl p-6 space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-gray-400 text-sm mb-1">Item Name *</label>
+                    <input type="text" name="item_name" required value="{{ material.item_name if material else '' }}"
+                        class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-prime focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-gray-400 text-sm mb-1">Category</label>
+                    <select name="category" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-prime focus:outline-none">
+                        {% for c in ["packing", "equipment", "consumable", "vehicle_accessory"] %}
+                        <option value="{{ c }}" {% if material and material.category == c %}selected{% endif %}>{{ c|replace("_"," ")|capitalize }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-gray-400 text-sm mb-1">Unit</label>
+                    <select name="unit" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-prime focus:outline-none">
+                        {% for u in ["each", "roll", "box", "litre", "kg"] %}
+                        <option value="{{ u }}" {% if material and material.unit == u %}selected{% endif %}>{{ u|capitalize }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% if not editing %}
+                <div>
+                    <label class="block text-gray-400 text-sm mb-1">Initial Quantity</label>
+                    <input type="number" name="quantity_in_stock" value="0"
+                        class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-prime focus:outline-none">
+                </div>
+                {% endif %}
+                <div>
+                    <label class="block text-gray-400 text-sm mb-1">Reorder Threshold</label>
+                    <input type="number" name="reorder_threshold" value="{{ material.reorder_threshold if material else '10' }}"
+                        class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-prime focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-gray-400 text-sm mb-1">Reorder Quantity</label>
+                    <input type="number" name="reorder_quantity" value="{{ material.reorder_quantity if material else '50' }}"
+                        class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-prime focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-gray-400 text-sm mb-1">Unit Cost (£)</label>
+                    <input type="number" name="unit_cost" step="0.01" value="{{ '%.2f'|format(material.unit_cost_pence / 100) if material else '0.00' }}"
+                        class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-prime focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-gray-400 text-sm mb-1">Supplier</label>
+                    <input type="text" name="supplier_name" value="{{ material.supplier_name if material and material.supplier_name else '' }}"
+                        class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-prime focus:outline-none">
+                </div>
+            </div>
+        </div>
+
+        <div class="flex gap-3">
+            <button type="submit" class="bg-prime text-prime-dark font-semibold px-6 py-2.5 rounded-lg hover:bg-green-300 transition">
+                {{ "Save Changes" if editing else "Add Material" }}
+            </button>
+            <a href="/materials" class="text-gray-400 hover:text-white px-6 py-2.5 rounded-lg border border-gray-600 text-sm">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

@@ -53,9 +53,13 @@ templates = Jinja2Templates(directory="app/templates")
 from app.staff_routes import router as staff_router
 from app.vehicle_routes import router as vehicle_router
 from app.diary_routes import router as diary_router
+from app.job_routes import router as job_router
+from app.materials_routes import router as materials_router
 app.include_router(staff_router)
 app.include_router(vehicle_router)
 app.include_router(diary_router)
+app.include_router(job_router)
+app.include_router(materials_router)
 
 
 # ──────────────────────────────────────────────

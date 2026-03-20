@@ -1,0 +1,139 @@
+{% extends "base_app.html" %}
+{% set active_nav = "jobs" %}
+{% block title %}{{ job.customer_name }} — {{ company.company_name }}{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+    <div>
+        <a href="/jobs" class="text-gray-500 hover:text-gray-300 text-sm">&larr; Back to Jobs</a>
+        <h1 class="text-2xl font-bold text-white mt-1">{{ job.customer_name }}</h1>
+        <p class="text-gray-400 text-sm">{{ job.customer_email or "" }} {{ job.customer_phone or "" }}</p>
+    </div>
+    <div class="flex gap-2 items-center">
+        <!-- Status Change -->
+        <form method="POST" action="/jobs/{{ job.id }}/status" class="flex gap-2">
+            <select name="new_status" class="bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:border-prime focus:outline-none">
+                {% for s in statuses %}
+                <option value="{{ s }}" {% if job.status == s %}selected{% endif %}>{{ s|capitalize }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="bg-gray-700 text-white px-3 py-2 rounded-lg text-sm hover:bg-gray-600">Update</button>
+        </form>
+    </div>
+</div>
+
+<div class="grid md:grid-cols-3 gap-6">
+    <!-- Job Details -->
+    <div class="md:col-span-2 space-y-6">
+        <div class="bg-gray-800 border border-gray-700 rounded-xl p-6">
+            <h2 class="text-white font-semibold mb-4">Details</h2>
+            <div class="grid grid-cols-2 gap-4 text-sm">
+                <div><span class="text-gray-400">Status</span>
+                    <div><span class="inline-block px-2 py-0.5 rounded text-xs font-medium mt-1
+                        {% if job.status == 'completed' %}bg-green-500/20 text-green-400
+                        {% elif job.status in ['in_progress', 'scheduled'] %}bg-blue-500/20 text-blue-400
+                        {% elif job.status == 'booked' %}bg-purple-500/20 text-purple-400
+                        {% else %}bg-gray-600/30 text-gray-400{% endif %}">{{ job.status|capitalize }}</span></div>
+                </div>
+                <div><span class="text-gray-400">Source</span><div class="text-white capitalize mt-1">{{ job.source or "—" }}</div></div>
+                <div><span class="text-gray-400">Property</span><div class="text-white mt-1">{{ job.property_type or "—" }}</div></div>
+                <div><span class="text-gray-400">CBM / Items</span><div class="text-white mt-1">{{ job.total_cbm or "—" }} m³ / {{ job.total_items or 0 }} items</div></div>
+                <div><span class="text-gray-400">Date</span><div class="text-white mt-1">{{ job.scheduled_date or "Unscheduled" }}{% if job.scheduled_start_time %} at {{ job.scheduled_start_time }}{% endif %}</div></div>
+                <div><span class="text-gray-400">Duration</span><div class="text-white mt-1">{{ job.estimated_duration_hours or "—" }} hours</div></div>
+                <div><span class="text-gray-400">Quoted</span><div class="text-white mt-1">{% if job.quoted_price_pence %}£{{ "%.2f"|format(job.quoted_price_pence / 100) }}{% else %}—{% endif %}</div></div>
+                <div><span class="text-gray-400">Vehicle</span><div class="text-white mt-1">{{ job.vehicle.registration if job.vehicle else "Not assigned" }}</div></div>
+            </div>
+            {% if job.pickup %}
+            <div class="mt-4 pt-4 border-t border-gray-700 text-sm">
+                <div class="text-gray-400 mb-1">Pickup</div>
+                <div class="text-white">{{ job.pickup.get('address', '') if job.pickup is mapping else '' }} {{ job.pickup.get('postcode', '') if job.pickup is mapping else '' }}</div>
+            </div>
+            {% endif %}
+            {% if job.dropoff %}
+            <div class="mt-2 text-sm">
+                <div class="text-gray-400 mb-1">Dropoff</div>
+                <div class="text-white">{{ job.dropoff.get('address', '') if job.dropoff is mapping else '' }} {{ job.dropoff.get('postcode', '') if job.dropoff is mapping else '' }}</div>
+            </div>
+            {% endif %}
+            {% if job.special_requirements %}
+            <div class="mt-4 pt-4 border-t border-gray-700 text-sm">
+                <div class="text-gray-400 mb-1">Special Requirements</div>
+                <div class="text-white">{{ job.special_requirements }}</div>
+            </div>
+            {% endif %}
+            {% if job.notes %}
+            <div class="mt-2 text-sm">
+                <div class="text-gray-400 mb-1">Notes</div>
+                <div class="text-white">{{ job.notes }}</div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Sidebar: Crew + Vehicle + Actions -->
+    <div class="space-y-6">
+        <!-- Vehicle Assignment -->
+        <div class="bg-gray-800 border border-gray-700 rounded-xl p-6">
+            <h2 class="text-white font-semibold mb-3">Vehicle</h2>
+            <form method="POST" action="/jobs/{{ job.id }}/assign-vehicle" class="flex gap-2">
+                <select name="vehicle_id" class="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:border-prime focus:outline-none">
+                    <option value="">None</option>
+                    {% for v in vehicles %}
+                    <option value="{{ v.id }}" {% if job.vehicle_id == v.id %}selected{% endif %}>{{ v.registration }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="bg-gray-700 text-white px-3 py-2 rounded-lg text-sm hover:bg-gray-600">Set</button>
+            </form>
+        </div>
+
+        <!-- Crew -->
+        <div class="bg-gray-800 border border-gray-700 rounded-xl p-6">
+            <h2 class="text-white font-semibold mb-3">Crew ({{ crew|length }})</h2>
+            {% if crew %}
+            <div class="space-y-2 mb-4">
+                {% for c in crew %}
+                <div class="flex items-center justify-between bg-gray-700/50 rounded-lg px-3 py-2">
+                    <div>
+                        <span class="text-white text-sm">{{ c.staff_member.full_name }}</span>
+                        <span class="text-gray-500 text-xs ml-1 capitalize">{{ c.role_on_job }}</span>
+                    </div>
+                    <form method="POST" action="/jobs/{{ job.id }}/remove-crew/{{ c.id }}">
+                        <button type="submit" class="text-red-400 hover:text-red-300 text-xs">Remove</button>
+                    </form>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+            <form method="POST" action="/jobs/{{ job.id }}/assign-crew" class="space-y-2">
+                <select name="staff_member_id" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:border-prime focus:outline-none">
+                    {% for s in available_staff %}
+                    <option value="{{ s.id }}">{{ s.full_name }} ({{ s.role }})</option>
+                    {% endfor %}
+                </select>
+                <div class="flex gap-2">
+                    <select name="role_on_job" class="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:border-prime focus:outline-none">
+                        <option value="porter">Porter</option>
+                        <option value="driver">Driver</option>
+                        <option value="lead_driver">Lead Driver</option>
+                    </select>
+                    <button type="submit" class="bg-prime text-prime-dark px-3 py-2 rounded-lg text-sm font-medium hover:bg-green-300">Add</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Actions -->
+        <div class="bg-gray-800 border border-gray-700 rounded-xl p-6">
+            <h2 class="text-white font-semibold mb-3">Actions</h2>
+            <div class="space-y-2">
+                {% if job.scheduled_date %}
+                <form method="POST" action="/jobs/{{ job.id }}/schedule-diary">
+                    <button type="submit" class="w-full bg-gray-700 text-white px-3 py-2 rounded-lg text-sm hover:bg-gray-600 text-left">
+                        Add to Diary
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
