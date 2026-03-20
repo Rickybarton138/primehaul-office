@@ -79,14 +79,14 @@
                 </select>
             </div>
             <div>
-                <label class="block text-gray-400 text-sm mb-1">Staff</label>
-                <select name="staff_ids" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-prime focus:outline-none">
-                    <option value="">None</option>
+                <label class="block text-gray-400 text-sm mb-1">Staff (select multiple)</label>
+                <div class="bg-gray-700 border border-gray-600 rounded-lg p-2 max-h-32 overflow-y-auto space-y-1">
                     {% for s in staff %}
-                    <option value="{{ s.id }}">{{ s.full_name }} ({{ s.role }})</option>
+                    <label class="flex items-center gap-2 text-white text-sm px-2 py-1 rounded hover:bg-gray-600 cursor-pointer">
+                        <input type="checkbox" name="staff_ids" value="{{ s.id }}" class="rounded"> {{ s.full_name }} ({{ s.role }})
+                    </label>
                     {% endfor %}
-                </select>
-                <p class="text-gray-500 text-xs mt-1">Multi-staff: comma-separate IDs in future version</p>
+                </div>
             </div>
             <div>
                 <label class="block text-gray-400 text-sm mb-1">Notes</label>
@@ -95,6 +95,68 @@
             </div>
             <button type="submit" class="w-full bg-prime text-prime-dark font-semibold py-2.5 rounded-lg hover:bg-green-300 transition">
                 Add Event
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Edit/Delete Event Modal -->
+<div id="editEventModal" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+    <div class="bg-gray-800 border border-gray-700 rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-xl font-bold text-white">Edit Event</h2>
+            <button onclick="document.getElementById('editEventModal').classList.add('hidden')" class="text-gray-400 hover:text-white text-xl">&times;</button>
+        </div>
+        <form method="POST" id="editForm" action="" class="space-y-4">
+            <input type="hidden" id="edit_event_id" name="event_id">
+            <div>
+                <label class="block text-gray-400 text-sm mb-1">Title *</label>
+                <input type="text" id="edit_title" name="title" required
+                    class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-prime focus:outline-none">
+            </div>
+            <div>
+                <label class="block text-gray-400 text-sm mb-1">Type</label>
+                <select id="edit_event_type" name="event_type" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-prime focus:outline-none">
+                    <option value="job">Job</option>
+                    <option value="survey_visit">Survey Visit</option>
+                    <option value="maintenance">Vehicle Maintenance</option>
+                    <option value="meeting">Meeting</option>
+                    <option value="blocked">Blocked/Unavailable</option>
+                </select>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div><label class="block text-gray-400 text-sm mb-1">Start Date</label>
+                <input type="date" id="edit_start_date" name="start_date" required class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-prime focus:outline-none"></div>
+                <div><label class="block text-gray-400 text-sm mb-1">Start Time</label>
+                <input type="time" id="edit_start_time" name="start_time" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-prime focus:outline-none"></div>
+                <div><label class="block text-gray-400 text-sm mb-1">End Date</label>
+                <input type="date" id="edit_end_date" name="end_date" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-prime focus:outline-none"></div>
+                <div><label class="block text-gray-400 text-sm mb-1">End Time</label>
+                <input type="time" id="edit_end_time" name="end_time" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-prime focus:outline-none"></div>
+            </div>
+            <div>
+                <label class="block text-gray-400 text-sm mb-1">Vehicle</label>
+                <select id="edit_vehicle_id" name="vehicle_id" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-prime focus:outline-none">
+                    <option value="">None</option>
+                    {% for v in vehicles %}
+                    <option value="{{ v.id }}">{{ v.registration }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-gray-400 text-sm mb-1">Notes</label>
+                <textarea id="edit_notes" name="notes" rows="2"
+                    class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-prime focus:outline-none"></textarea>
+            </div>
+            <div class="flex gap-2">
+                <button type="submit" class="flex-1 bg-prime text-prime-dark font-semibold py-2.5 rounded-lg hover:bg-green-300 transition">
+                    Save Changes
+                </button>
+            </div>
+        </form>
+        <form method="POST" id="deleteForm" action="" class="mt-2">
+            <button type="submit" onclick="return confirm('Delete this event?')" class="w-full bg-red-500/20 text-red-400 py-2.5 rounded-lg hover:bg-red-500/30 transition text-sm">
+                Delete Event
             </button>
         </form>
     </div>
@@ -116,8 +178,23 @@ document.addEventListener('DOMContentLoaded', function() {
         height: 'auto',
         themeSystem: 'standard',
         eventClick: function(info) {
-            var props = info.event.extendedProps;
-            alert(info.event.title + '\n\nType: ' + props.event_type + (props.notes ? '\nNotes: ' + props.notes : ''));
+            var eid = info.event.id;
+            fetch('/diary/api/events/' + eid)
+                .then(r => r.json())
+                .then(ev => {
+                    document.getElementById('edit_event_id').value = ev.id;
+                    document.getElementById('edit_title').value = ev.title;
+                    document.getElementById('edit_event_type').value = ev.event_type;
+                    document.getElementById('edit_start_date').value = ev.start_date;
+                    document.getElementById('edit_start_time').value = ev.start_time;
+                    document.getElementById('edit_end_date').value = ev.end_date;
+                    document.getElementById('edit_end_time').value = ev.end_time;
+                    document.getElementById('edit_vehicle_id').value = ev.vehicle_id;
+                    document.getElementById('edit_notes').value = ev.notes;
+                    document.getElementById('editForm').action = '/diary/api/events/' + ev.id + '/edit';
+                    document.getElementById('deleteForm').action = '/diary/api/events/' + ev.id + '/delete';
+                    document.getElementById('editEventModal').classList.remove('hidden');
+                });
         },
         select: function(info) {
             document.querySelector('[name="start_date"]').value = info.startStr.split('T')[0];

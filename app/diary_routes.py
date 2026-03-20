@@ -99,26 +99,26 @@ def diary_events_api(
 
 
 @router.post("/api/events")
-def diary_create_event(
+async def diary_create_event(
     request: Request,
-    title: str = Form(...),
-    event_type: str = Form("job"),
-    start_date: str = Form(...),
-    start_time: str = Form("09:00"),
-    end_date: str = Form(""),
-    end_time: str = Form("17:00"),
-    all_day: bool = Form(False),
-    vehicle_id: str = Form(""),
-    staff_ids: str = Form(""),
-    notes: str = Form(""),
     current_user: User = Depends(require_role("office")),
     db: Session = Depends(get_db),
 ):
-    end_date = end_date or start_date
+    form = await request.form()
+    title = form.get("title", "")
+    event_type = form.get("event_type", "job")
+    start_date = form.get("start_date", "")
+    start_time = form.get("start_time", "09:00")
+    end_date = form.get("end_date", "") or start_date
+    end_time = form.get("end_time", "17:00")
+    vehicle_id = form.get("vehicle_id", "")
+    notes = form.get("notes", "")
+
+    # Checkboxes send multiple values with same name
+    staff_id_list = form.getlist("staff_ids")
+
     start_dt = datetime.fromisoformat(f"{start_date}T{start_time}")
     end_dt = datetime.fromisoformat(f"{end_date}T{end_time}")
-
-    staff_id_list = [s.strip() for s in staff_ids.split(",") if s.strip()] if staff_ids else []
 
     event = DiaryEvent(
         company_id=current_user.company_id,
@@ -133,6 +133,87 @@ def diary_create_event(
         color=EVENT_COLORS.get(event_type, "#6b7280"),
     )
     db.add(event)
+    db.commit()
+
+    return RedirectResponse(url="/diary", status_code=302)
+
+
+@router.get("/api/events/{event_id}")
+def diary_get_event(
+    event_id: str,
+    current_user: User = Depends(require_role("office")),
+    db: Session = Depends(get_db),
+):
+    """Get single event as JSON for the edit modal."""
+    event = db.query(DiaryEvent).filter(
+        DiaryEvent.id == event_id,
+        DiaryEvent.company_id == current_user.company_id,
+    ).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    # Resolve staff names
+    staff_names = []
+    if event.staff_member_ids:
+        staff_records = db.query(StaffMember).filter(StaffMember.id.in_(event.staff_member_ids)).all()
+        staff_names = [s.full_name for s in staff_records]
+
+    # Resolve vehicle registration
+    vehicle_reg = ""
+    if event.vehicle_id:
+        v = db.query(Vehicle).filter(Vehicle.id == event.vehicle_id).first()
+        vehicle_reg = v.registration if v else ""
+
+    return {
+        "id": event.id,
+        "title": event.title,
+        "event_type": event.event_type,
+        "start_date": event.start_time.strftime("%Y-%m-%d"),
+        "start_time": event.start_time.strftime("%H:%M"),
+        "end_date": event.end_time.strftime("%Y-%m-%d"),
+        "end_time": event.end_time.strftime("%H:%M"),
+        "vehicle_id": event.vehicle_id or "",
+        "vehicle_reg": vehicle_reg,
+        "staff_member_ids": event.staff_member_ids or [],
+        "staff_names": staff_names,
+        "notes": event.notes or "",
+    }
+
+
+@router.post("/api/events/{event_id}/edit")
+async def diary_edit_event(
+    event_id: str,
+    request: Request,
+    current_user: User = Depends(require_role("office")),
+    db: Session = Depends(get_db),
+):
+    event = db.query(DiaryEvent).filter(
+        DiaryEvent.id == event_id,
+        DiaryEvent.company_id == current_user.company_id,
+    ).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    form = await request.form()
+    title = form.get("title", "")
+    event_type = form.get("event_type", "job")
+    start_date = form.get("start_date", "")
+    start_time = form.get("start_time", "09:00")
+    end_date = form.get("end_date", "") or start_date
+    end_time = form.get("end_time", "17:00")
+    vehicle_id = form.get("vehicle_id", "")
+    notes = form.get("notes", "")
+    staff_id_list = form.getlist("staff_ids")
+
+    event.title = title.strip()
+    event.event_type = event_type
+    event.start_time = datetime.fromisoformat(f"{start_date}T{start_time}")
+    event.end_time = datetime.fromisoformat(f"{end_date}T{end_time}")
+    event.vehicle_id = vehicle_id if vehicle_id else None
+    event.staff_member_ids = staff_id_list
+    event.notes = notes.strip() if notes else None
+    event.color = EVENT_COLORS.get(event_type, "#6b7280")
+    event.updated_at = datetime.utcnow()
     db.commit()
 
     return RedirectResponse(url="/diary", status_code=302)
