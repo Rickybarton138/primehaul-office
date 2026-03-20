@@ -49,6 +49,14 @@ app.add_middleware(ErrorTrackingMiddleware)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")
 
+# Route modules
+from app.staff_routes import router as staff_router
+from app.vehicle_routes import router as vehicle_router
+from app.diary_routes import router as diary_router
+app.include_router(staff_router)
+app.include_router(vehicle_router)
+app.include_router(diary_router)
+
 
 # ──────────────────────────────────────────────
 # Health Check

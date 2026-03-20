@@ -1,0 +1,66 @@
+{% extends "base_app.html" %}
+{% set active_nav = "vehicles" %}
+{% block title %}Vehicles — {{ company.company_name }}{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-bold text-white">Vehicles</h1>
+    <a href="/vehicles/add" class="bg-prime text-prime-dark font-semibold px-4 py-2 rounded-lg text-sm hover:bg-green-300 transition">
+        + Add Vehicle
+    </a>
+</div>
+
+<div class="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden">
+    {% if vehicles %}
+    <table class="w-full">
+        <thead>
+            <tr class="text-gray-400 text-sm border-b border-gray-700">
+                <th class="text-left px-6 py-3 font-medium">Registration</th>
+                <th class="text-left px-6 py-3 font-medium hidden md:table-cell">Type</th>
+                <th class="text-left px-6 py-3 font-medium hidden md:table-cell">Make / Model</th>
+                <th class="text-left px-6 py-3 font-medium hidden lg:table-cell">Capacity</th>
+                <th class="text-left px-6 py-3 font-medium hidden lg:table-cell">MOT</th>
+                <th class="text-left px-6 py-3 font-medium">Status</th>
+                <th class="text-right px-6 py-3 font-medium">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for v in vehicles %}
+            <tr class="border-b border-gray-700/50 hover:bg-gray-700/30">
+                <td class="px-6 py-3">
+                    <a href="/vehicles/{{ v.id }}" class="text-white hover:text-prime text-sm font-mono font-medium">{{ v.registration }}</a>
+                </td>
+                <td class="px-6 py-3 text-gray-400 text-sm hidden md:table-cell">{{ v.vehicle_type|replace("_", " ")|capitalize }}</td>
+                <td class="px-6 py-3 text-gray-400 text-sm hidden md:table-cell">{{ (v.make or "") ~ " " ~ (v.model or "") or "—" }}</td>
+                <td class="px-6 py-3 text-gray-400 text-sm hidden lg:table-cell">{{ v.capacity_cbm or "—" }} m³</td>
+                <td class="px-6 py-3 hidden lg:table-cell">
+                    {% if v.mot_expiry %}
+                    <span class="text-sm {% if v.mot_warning %}text-red-400 font-medium{% else %}text-gray-400{% endif %}">
+                        {{ v.mot_expiry }}{% if v.mot_warning %} ⚠{% endif %}
+                    </span>
+                    {% else %}<span class="text-gray-500 text-sm">—</span>{% endif %}
+                </td>
+                <td class="px-6 py-3">
+                    <span class="inline-block px-2 py-0.5 rounded text-xs font-medium
+                        {% if v.status == 'available' %}bg-green-500/20 text-green-400
+                        {% elif v.status == 'in_use' %}bg-blue-500/20 text-blue-400
+                        {% elif v.status == 'maintenance' %}bg-yellow-500/20 text-yellow-400
+                        {% else %}bg-red-500/20 text-red-400{% endif %}">
+                        {{ v.status|replace("_", " ")|capitalize }}
+                    </span>
+                </td>
+                <td class="px-6 py-3 text-right">
+                    <a href="/vehicles/{{ v.id }}/edit" class="text-gray-400 hover:text-prime text-sm">Edit</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="px-6 py-12 text-center text-gray-500">
+        <p class="text-lg mb-2">No vehicles yet</p>
+        <p class="text-sm">Add your fleet — Lutons, Transits, and more.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

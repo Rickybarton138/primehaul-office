@@ -1,0 +1,112 @@
+{% extends "base_app.html" %}
+{% set active_nav = "staff" %}
+{% block title %}{{ "Edit" if editing else "Add" }} Staff — {{ company.company_name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl">
+    <h1 class="text-2xl font-bold text-white mb-6">{{ "Edit" if editing else "Add" }} Staff Member</h1>
+
+    <form method="POST" action="/staff/{% if editing %}{{ staff_member.id }}/edit{% else %}add{% endif %}" class="space-y-6">
+        <div class="bg-gray-800 border border-gray-700 rounded-xl p-6 space-y-4">
+            <h2 class="text-white font-semibold mb-2">Personal Details</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-gray-400 text-sm mb-1">Full Name *</label>
+                    <input type="text" name="full_name" required value="{{ staff_member.full_name if staff_member else '' }}"
+                        class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-prime focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-gray-400 text-sm mb-1">Email</label>
+                    <input type="email" name="email" value="{{ staff_member.email if staff_member and staff_member.email else '' }}"
+                        class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-prime focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-gray-400 text-sm mb-1">Phone</label>
+                    <input type="tel" name="phone" value="{{ staff_member.phone if staff_member and staff_member.phone else '' }}"
+                        class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-prime focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-gray-400 text-sm mb-1">Role</label>
+                    <select name="role" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-prime focus:outline-none">
+                        {% for r in ["porter", "driver", "surveyor", "office", "admin"] %}
+                        <option value="{{ r }}" {% if staff_member and staff_member.role == r %}selected{% endif %}>{{ r|capitalize }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-gray-800 border border-gray-700 rounded-xl p-6 space-y-4">
+            <h2 class="text-white font-semibold mb-2">Employment</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-gray-400 text-sm mb-1">Hourly Rate (£)</label>
+                    <input type="number" name="hourly_rate" step="0.01" value="{{ '%.2f'|format(staff_member.hourly_rate_pence / 100) if staff_member else '12.00' }}"
+                        class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-prime focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-gray-400 text-sm mb-1">Employment Type</label>
+                    <select name="employment_type" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-prime focus:outline-none">
+                        {% for t in ["full_time", "part_time", "casual"] %}
+                        <option value="{{ t }}" {% if staff_member and staff_member.employment_type == t %}selected{% endif %}>{{ t|replace("_", " ")|capitalize }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-gray-400 text-sm mb-1">License Type</label>
+                    <select name="license_type" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-prime focus:outline-none">
+                        <option value="">None</option>
+                        {% for l in ["cat_b", "cat_c1", "cat_c"] %}
+                        <option value="{{ l }}" {% if staff_member and staff_member.license_type == l %}selected{% endif %}>{{ l|upper }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-gray-400 text-sm mb-1">License Expiry</label>
+                    <input type="date" name="license_expiry" value="{{ staff_member.license_expiry if staff_member and staff_member.license_expiry else '' }}"
+                        class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-prime focus:outline-none">
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-gray-800 border border-gray-700 rounded-xl p-6 space-y-4">
+            <h2 class="text-white font-semibold mb-2">Emergency Contact</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-gray-400 text-sm mb-1">Contact Name</label>
+                    <input type="text" name="emergency_contact_name" value="{{ staff_member.emergency_contact_name if staff_member and staff_member.emergency_contact_name else '' }}"
+                        class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-prime focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-gray-400 text-sm mb-1">Contact Phone</label>
+                    <input type="tel" name="emergency_contact_phone" value="{{ staff_member.emergency_contact_phone if staff_member and staff_member.emergency_contact_phone else '' }}"
+                        class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-prime focus:outline-none">
+                </div>
+            </div>
+        </div>
+
+        {% if not editing %}
+        <div class="bg-gray-800 border border-gray-700 rounded-xl p-6 space-y-4">
+            <h2 class="text-white font-semibold mb-2">App Login (Optional)</h2>
+            <p class="text-gray-500 text-sm">Create a login so this staff member can use the Road Staff app.</p>
+            <div class="flex items-center gap-2">
+                <input type="checkbox" name="create_login" id="create_login" class="rounded">
+                <label for="create_login" class="text-gray-400 text-sm">Create login account</label>
+            </div>
+            <div>
+                <label class="block text-gray-400 text-sm mb-1">Password</label>
+                <input type="password" name="login_password" minlength="8"
+                    class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-prime focus:outline-none">
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="flex gap-3">
+            <button type="submit" class="bg-prime text-prime-dark font-semibold px-6 py-2.5 rounded-lg hover:bg-green-300 transition">
+                {{ "Save Changes" if editing else "Add Staff Member" }}
+            </button>
+            <a href="/staff" class="text-gray-400 hover:text-white px-6 py-2.5 rounded-lg border border-gray-600 text-sm">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

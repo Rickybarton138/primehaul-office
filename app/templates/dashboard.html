@@ -1,96 +1,66 @@
-{% extends "base.html" %}
+{% extends "base_app.html" %}
+{% set active_nav = "dashboard" %}
 {% block title %}Dashboard — {{ company.company_name }}{% endblock %}
 
-{% block body %}
-<div class="min-h-screen bg-gray-900">
-    <!-- Top Nav -->
-    <nav class="bg-prime-dark border-b border-gray-800 px-6 py-3">
-        <div class="flex items-center justify-between max-w-7xl mx-auto">
-            <div class="flex items-center gap-4">
-                <div class="flex items-center gap-2">
-                    <div class="w-7 h-7 bg-prime rounded-md flex items-center justify-center font-bold text-prime-dark text-xs">PH</div>
-                    <span class="text-white font-semibold">{{ company.company_name }}</span>
-                </div>
-                <div class="hidden md:flex items-center gap-1 ml-6">
-                    <a href="/dashboard" class="text-prime bg-prime/10 px-3 py-1.5 rounded-md text-sm font-medium">Dashboard</a>
-                    <a href="/jobs" class="text-gray-400 hover:text-white px-3 py-1.5 rounded-md text-sm">Jobs</a>
-                    <a href="/leads" class="text-gray-400 hover:text-white px-3 py-1.5 rounded-md text-sm">Leads</a>
-                    <a href="/diary" class="text-gray-400 hover:text-white px-3 py-1.5 rounded-md text-sm">Diary</a>
-                    <a href="/staff" class="text-gray-400 hover:text-white px-3 py-1.5 rounded-md text-sm">Staff</a>
-                    <a href="/vehicles" class="text-gray-400 hover:text-white px-3 py-1.5 rounded-md text-sm">Vehicles</a>
-                    <a href="/materials" class="text-gray-400 hover:text-white px-3 py-1.5 rounded-md text-sm">Materials</a>
-                    <a href="/reviews" class="text-gray-400 hover:text-white px-3 py-1.5 rounded-md text-sm">Reviews</a>
-                </div>
-            </div>
-            <div class="flex items-center gap-3">
-                <span class="text-gray-400 text-sm hidden sm:block">{{ user.full_name }}</span>
-                <a href="/logout" class="text-gray-500 hover:text-red-400 text-sm">Logout</a>
-            </div>
-        </div>
-    </nav>
+{% block content %}
+<h1 class="text-2xl font-bold text-white mb-6">Dashboard</h1>
 
-    <!-- Dashboard Content -->
-    <main class="max-w-7xl mx-auto px-6 py-8">
-        <h1 class="text-2xl font-bold text-white mb-6">Dashboard</h1>
+<!-- KPI Cards -->
+<div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+    {% for label, value, color in [
+        ("New Leads", new_leads, "text-yellow-400"),
+        ("Active Jobs", active_jobs, "text-prime"),
+        ("Total Jobs", total_jobs, "text-blue-400"),
+        ("Staff", staff_count, "text-purple-400"),
+        ("Vehicles", vehicle_count, "text-orange-400"),
+    ] %}
+    <div class="bg-gray-800 border border-gray-700 rounded-xl p-4">
+        <div class="{{ color }} text-3xl font-bold">{{ value }}</div>
+        <div class="text-gray-400 text-sm mt-1">{{ label }}</div>
+    </div>
+    {% endfor %}
+</div>
 
-        <!-- KPI Cards -->
-        <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
-            {% for label, value, color in [
-                ("New Leads", new_leads, "text-yellow-400"),
-                ("Active Jobs", active_jobs, "text-prime"),
-                ("Total Jobs", total_jobs, "text-blue-400"),
-                ("Staff", staff_count, "text-purple-400"),
-                ("Vehicles", vehicle_count, "text-orange-400"),
-            ] %}
-            <div class="bg-gray-800 border border-gray-700 rounded-xl p-4">
-                <div class="{{ color }} text-3xl font-bold">{{ value }}</div>
-                <div class="text-gray-400 text-sm mt-1">{{ label }}</div>
-            </div>
+<!-- Recent Jobs -->
+<div class="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden">
+    <div class="flex items-center justify-between px-6 py-4 border-b border-gray-700">
+        <h2 class="text-white font-semibold">Recent Jobs</h2>
+        <a href="/jobs" class="text-prime text-sm hover:underline">View all</a>
+    </div>
+    {% if recent_jobs %}
+    <table class="w-full">
+        <thead>
+            <tr class="text-gray-400 text-sm border-b border-gray-700">
+                <th class="text-left px-6 py-3 font-medium">Customer</th>
+                <th class="text-left px-6 py-3 font-medium hidden md:table-cell">Date</th>
+                <th class="text-left px-6 py-3 font-medium hidden md:table-cell">Source</th>
+                <th class="text-left px-6 py-3 font-medium">Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for job in recent_jobs %}
+            <tr class="border-b border-gray-700/50 hover:bg-gray-700/30">
+                <td class="px-6 py-3 text-white text-sm">{{ job.customer_name or "—" }}</td>
+                <td class="px-6 py-3 text-gray-400 text-sm hidden md:table-cell">{{ job.scheduled_date or "Unscheduled" }}</td>
+                <td class="px-6 py-3 text-gray-400 text-sm hidden md:table-cell">{{ job.source or "—" }}</td>
+                <td class="px-6 py-3">
+                    <span class="inline-block px-2 py-0.5 rounded text-xs font-medium
+                        {% if job.status == 'completed' %}bg-green-500/20 text-green-400
+                        {% elif job.status in ['in_progress', 'scheduled'] %}bg-blue-500/20 text-blue-400
+                        {% elif job.status == 'cancelled' %}bg-red-500/20 text-red-400
+                        {% else %}bg-gray-600/30 text-gray-400{% endif %}">
+                        {{ job.status }}
+                    </span>
+                </td>
+            </tr>
             {% endfor %}
-        </div>
-
-        <!-- Recent Jobs -->
-        <div class="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden">
-            <div class="flex items-center justify-between px-6 py-4 border-b border-gray-700">
-                <h2 class="text-white font-semibold">Recent Jobs</h2>
-                <a href="/jobs" class="text-prime text-sm hover:underline">View all</a>
-            </div>
-            {% if recent_jobs %}
-            <table class="w-full">
-                <thead>
-                    <tr class="text-gray-400 text-sm border-b border-gray-700">
-                        <th class="text-left px-6 py-3 font-medium">Customer</th>
-                        <th class="text-left px-6 py-3 font-medium hidden md:table-cell">Date</th>
-                        <th class="text-left px-6 py-3 font-medium hidden md:table-cell">Source</th>
-                        <th class="text-left px-6 py-3 font-medium">Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for job in recent_jobs %}
-                    <tr class="border-b border-gray-700/50 hover:bg-gray-700/30">
-                        <td class="px-6 py-3 text-white text-sm">{{ job.customer_name or "—" }}</td>
-                        <td class="px-6 py-3 text-gray-400 text-sm hidden md:table-cell">{{ job.scheduled_date or "Unscheduled" }}</td>
-                        <td class="px-6 py-3 text-gray-400 text-sm hidden md:table-cell">{{ job.source or "—" }}</td>
-                        <td class="px-6 py-3">
-                            <span class="inline-block px-2 py-0.5 rounded text-xs font-medium
-                                {% if job.status == 'completed' %}bg-green-500/20 text-green-400
-                                {% elif job.status in ['in_progress', 'scheduled'] %}bg-blue-500/20 text-blue-400
-                                {% elif job.status == 'cancelled' %}bg-red-500/20 text-red-400
-                                {% else %}bg-gray-600/30 text-gray-400{% endif %}">
-                                {{ job.status }}
-                            </span>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            {% else %}
-            <div class="px-6 py-12 text-center text-gray-500">
-                <p class="text-lg mb-2">No jobs yet</p>
-                <p class="text-sm">Jobs will appear here as leads are converted or manually added.</p>
-            </div>
-            {% endif %}
-        </div>
-    </main>
+        </tbody>
+    </table>
+    {% else %}
+    <div class="px-6 py-12 text-center text-gray-500">
+        <p class="text-lg mb-2">No jobs yet</p>
+        <p class="text-sm">Jobs will appear here as leads are converted or manually added.</p>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}

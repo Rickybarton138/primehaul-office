@@ -1,0 +1,93 @@
+{% extends "base_app.html" %}
+{% set active_nav = "vehicles" %}
+{% block title %}{{ "Edit" if editing else "Add" }} Vehicle — {{ company.company_name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl">
+    <h1 class="text-2xl font-bold text-white mb-6">{{ "Edit" if editing else "Add" }} Vehicle</h1>
+
+    <form method="POST" action="/vehicles/{% if editing %}{{ vehicle.id }}/edit{% else %}add{% endif %}" class="space-y-6">
+        <div class="bg-gray-800 border border-gray-700 rounded-xl p-6 space-y-4">
+            <h2 class="text-white font-semibold mb-2">Vehicle Details</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-gray-400 text-sm mb-1">Registration *</label>
+                    <input type="text" name="registration" required value="{{ vehicle.registration if vehicle else '' }}" placeholder="AB12 CDE"
+                        class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-white uppercase focus:border-prime focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-gray-400 text-sm mb-1">Type</label>
+                    <select name="vehicle_type" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-prime focus:outline-none">
+                        {% for t, label in [("luton_3.5t", "Luton 3.5t"), ("luton_7.5t", "Luton 7.5t"), ("transit", "Transit/SWB"), ("containerised", "Containerised")] %}
+                        <option value="{{ t }}" {% if vehicle and vehicle.vehicle_type == t %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-gray-400 text-sm mb-1">Make</label>
+                    <input type="text" name="make" value="{{ vehicle.make if vehicle and vehicle.make else '' }}" placeholder="e.g. Mercedes"
+                        class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-prime focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-gray-400 text-sm mb-1">Model</label>
+                    <input type="text" name="model" value="{{ vehicle.model if vehicle and vehicle.model else '' }}" placeholder="e.g. Sprinter"
+                        class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-prime focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-gray-400 text-sm mb-1">Capacity (m³)</label>
+                    <input type="number" name="capacity_cbm" step="0.1" value="{{ vehicle.capacity_cbm if vehicle and vehicle.capacity_cbm else '' }}"
+                        class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-prime focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-gray-400 text-sm mb-1">Max Weight (kg)</label>
+                    <input type="number" name="max_weight_kg" step="1" value="{{ vehicle.max_weight_kg if vehicle and vehicle.max_weight_kg else '' }}"
+                        class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-prime focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-gray-400 text-sm mb-1">Current Mileage</label>
+                    <input type="number" name="current_mileage" value="{{ vehicle.current_mileage if vehicle else '0' }}"
+                        class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-prime focus:outline-none">
+                </div>
+                {% if editing %}
+                <div>
+                    <label class="block text-gray-400 text-sm mb-1">Status</label>
+                    <select name="status" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-prime focus:outline-none">
+                        {% for s in ["available", "in_use", "maintenance", "off_road"] %}
+                        <option value="{{ s }}" {% if vehicle and vehicle.status == s %}selected{% endif %}>{{ s|replace("_", " ")|capitalize }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="bg-gray-800 border border-gray-700 rounded-xl p-6 space-y-4">
+            <h2 class="text-white font-semibold mb-2">Compliance Dates</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-gray-400 text-sm mb-1">MOT Expiry</label>
+                    <input type="date" name="mot_expiry" value="{{ vehicle.mot_expiry if vehicle and vehicle.mot_expiry else '' }}"
+                        class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-prime focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-gray-400 text-sm mb-1">Insurance Expiry</label>
+                    <input type="date" name="insurance_expiry" value="{{ vehicle.insurance_expiry if vehicle and vehicle.insurance_expiry else '' }}"
+                        class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-prime focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-gray-400 text-sm mb-1">Tax Expiry</label>
+                    <input type="date" name="tax_expiry" value="{{ vehicle.tax_expiry if vehicle and vehicle.tax_expiry else '' }}"
+                        class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-prime focus:outline-none">
+                </div>
+            </div>
+        </div>
+
+        <div class="flex gap-3">
+            <button type="submit" class="bg-prime text-prime-dark font-semibold px-6 py-2.5 rounded-lg hover:bg-green-300 transition">
+                {{ "Save Changes" if editing else "Add Vehicle" }}
+            </button>
+            <a href="/vehicles" class="text-gray-400 hover:text-white px-6 py-2.5 rounded-lg border border-gray-600 text-sm">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

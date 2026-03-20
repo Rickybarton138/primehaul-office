@@ -1,0 +1,153 @@
+{% extends "base_app.html" %}
+{% set active_nav = "diary" %}
+{% block title %}Diary — {{ company.company_name }}{% endblock %}
+
+{% block head %}
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-bold text-white">Diary</h1>
+    <div class="flex gap-2">
+        <a href="/diary/today" class="bg-gray-700 text-white px-4 py-2 rounded-lg text-sm hover:bg-gray-600 transition">Today's Briefing</a>
+        <button onclick="document.getElementById('addEventModal').classList.remove('hidden')"
+            class="bg-prime text-prime-dark font-semibold px-4 py-2 rounded-lg text-sm hover:bg-green-300 transition">
+            + Add Event
+        </button>
+    </div>
+</div>
+
+<!-- Calendar -->
+<div class="bg-gray-800 border border-gray-700 rounded-xl p-4">
+    <div id="calendar"></div>
+</div>
+
+<!-- Add Event Modal -->
+<div id="addEventModal" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+    <div class="bg-gray-800 border border-gray-700 rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-xl font-bold text-white">Add Event</h2>
+            <button onclick="document.getElementById('addEventModal').classList.add('hidden')" class="text-gray-400 hover:text-white text-xl">&times;</button>
+        </div>
+        <form method="POST" action="/diary/api/events" class="space-y-4">
+            <div>
+                <label class="block text-gray-400 text-sm mb-1">Title *</label>
+                <input type="text" name="title" required placeholder="e.g. Smith move — 3 bed semi"
+                    class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-prime focus:outline-none">
+            </div>
+            <div>
+                <label class="block text-gray-400 text-sm mb-1">Type</label>
+                <select name="event_type" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-prime focus:outline-none">
+                    <option value="job">Job</option>
+                    <option value="survey_visit">Survey Visit</option>
+                    <option value="maintenance">Vehicle Maintenance</option>
+                    <option value="meeting">Meeting</option>
+                    <option value="blocked">Blocked/Unavailable</option>
+                </select>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-gray-400 text-sm mb-1">Start Date *</label>
+                    <input type="date" name="start_date" required
+                        class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-prime focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-gray-400 text-sm mb-1">Start Time</label>
+                    <input type="time" name="start_time" value="09:00"
+                        class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-prime focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-gray-400 text-sm mb-1">End Date</label>
+                    <input type="date" name="end_date"
+                        class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-prime focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-gray-400 text-sm mb-1">End Time</label>
+                    <input type="time" name="end_time" value="17:00"
+                        class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-prime focus:outline-none">
+                </div>
+            </div>
+            <div>
+                <label class="block text-gray-400 text-sm mb-1">Vehicle</label>
+                <select name="vehicle_id" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-prime focus:outline-none">
+                    <option value="">None</option>
+                    {% for v in vehicles %}
+                    <option value="{{ v.id }}">{{ v.registration }} — {{ v.vehicle_type|replace("_", " ") }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-gray-400 text-sm mb-1">Staff</label>
+                <select name="staff_ids" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-prime focus:outline-none">
+                    <option value="">None</option>
+                    {% for s in staff %}
+                    <option value="{{ s.id }}">{{ s.full_name }} ({{ s.role }})</option>
+                    {% endfor %}
+                </select>
+                <p class="text-gray-500 text-xs mt-1">Multi-staff: comma-separate IDs in future version</p>
+            </div>
+            <div>
+                <label class="block text-gray-400 text-sm mb-1">Notes</label>
+                <textarea name="notes" rows="2"
+                    class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:border-prime focus:outline-none"></textarea>
+            </div>
+            <button type="submit" class="w-full bg-prime text-prime-dark font-semibold py-2.5 rounded-lg hover:bg-green-300 transition">
+                Add Event
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var calendarEl = document.getElementById('calendar');
+    var calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek'
+        },
+        events: '/diary/api/events',
+        editable: false,
+        selectable: true,
+        height: 'auto',
+        themeSystem: 'standard',
+        eventClick: function(info) {
+            var props = info.event.extendedProps;
+            alert(info.event.title + '\n\nType: ' + props.event_type + (props.notes ? '\nNotes: ' + props.notes : ''));
+        },
+        select: function(info) {
+            document.querySelector('[name="start_date"]').value = info.startStr.split('T')[0];
+            if (info.endStr) {
+                var endDate = new Date(info.end);
+                endDate.setDate(endDate.getDate() - 1);
+                document.querySelector('[name="end_date"]').value = endDate.toISOString().split('T')[0];
+            }
+            document.getElementById('addEventModal').classList.remove('hidden');
+        }
+    });
+    calendar.render();
+
+    // Dark theme overrides
+    document.querySelectorAll('.fc').forEach(el => {
+        el.style.setProperty('--fc-border-color', '#374151');
+        el.style.setProperty('--fc-page-bg-color', 'transparent');
+        el.style.setProperty('--fc-neutral-bg-color', '#1f2937');
+        el.style.setProperty('--fc-list-event-hover-bg-color', '#374151');
+        el.style.setProperty('--fc-today-bg-color', 'rgba(46,229,157,0.1)');
+    });
+});
+</script>
+<style>
+    .fc { color: #e5e7eb; }
+    .fc .fc-button { background: #374151; border-color: #4b5563; color: #e5e7eb; }
+    .fc .fc-button:hover { background: #4b5563; }
+    .fc .fc-button-active { background: #2ee59d !important; color: #1a1a2e !important; border-color: #2ee59d !important; }
+    .fc .fc-col-header-cell { background: #1f2937; }
+    .fc .fc-daygrid-day-number { color: #9ca3af; }
+    .fc .fc-day-today .fc-daygrid-day-number { color: #2ee59d; font-weight: bold; }
+</style>
+{% endblock %}

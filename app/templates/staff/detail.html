@@ -1,0 +1,49 @@
+{% extends "base_app.html" %}
+{% set active_nav = "staff" %}
+{% block title %}{{ staff_member.full_name }} — {{ company.company_name }}{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+    <div>
+        <a href="/staff" class="text-gray-500 hover:text-gray-300 text-sm">&larr; Back to Staff</a>
+        <h1 class="text-2xl font-bold text-white mt-1">{{ staff_member.full_name }}</h1>
+    </div>
+    <div class="flex gap-2">
+        <a href="/staff/{{ staff_member.id }}/edit" class="bg-gray-700 text-white px-4 py-2 rounded-lg text-sm hover:bg-gray-600 transition">Edit</a>
+        <form method="POST" action="/staff/{{ staff_member.id }}/toggle" class="inline">
+            <button type="submit" class="{% if staff_member.is_active %}bg-red-500/20 text-red-400 hover:bg-red-500/30{% else %}bg-green-500/20 text-green-400 hover:bg-green-500/30{% endif %} px-4 py-2 rounded-lg text-sm transition">
+                {{ "Deactivate" if staff_member.is_active else "Reactivate" }}
+            </button>
+        </form>
+    </div>
+</div>
+
+<div class="grid md:grid-cols-2 gap-6">
+    <div class="bg-gray-800 border border-gray-700 rounded-xl p-6">
+        <h2 class="text-white font-semibold mb-4">Details</h2>
+        <dl class="space-y-3 text-sm">
+            <div class="flex justify-between"><dt class="text-gray-400">Role</dt><dd class="text-white capitalize">{{ staff_member.role }}</dd></div>
+            <div class="flex justify-between"><dt class="text-gray-400">Email</dt><dd class="text-white">{{ staff_member.email or "—" }}</dd></div>
+            <div class="flex justify-between"><dt class="text-gray-400">Phone</dt><dd class="text-white">{{ staff_member.phone or "—" }}</dd></div>
+            <div class="flex justify-between"><dt class="text-gray-400">Employment</dt><dd class="text-white capitalize">{{ staff_member.employment_type|replace("_", " ") }}</dd></div>
+            <div class="flex justify-between"><dt class="text-gray-400">Hourly Rate</dt><dd class="text-white">£{{ "%.2f"|format(staff_member.hourly_rate_pence / 100) }}/hr</dd></div>
+            <div class="flex justify-between"><dt class="text-gray-400">License</dt><dd class="text-white uppercase">{{ staff_member.license_type or "None" }}</dd></div>
+            {% if staff_member.license_expiry %}
+            <div class="flex justify-between"><dt class="text-gray-400">License Expiry</dt><dd class="text-white">{{ staff_member.license_expiry }}</dd></div>
+            {% endif %}
+            <div class="flex justify-between"><dt class="text-gray-400">Status</dt>
+                <dd><span class="inline-block px-2 py-0.5 rounded text-xs font-medium {% if staff_member.is_active %}bg-green-500/20 text-green-400{% else %}bg-red-500/20 text-red-400{% endif %}">{{ "Active" if staff_member.is_active else "Inactive" }}</span></dd>
+            </div>
+            <div class="flex justify-between"><dt class="text-gray-400">App Login</dt><dd class="text-white">{{ "Yes" if staff_member.user_id else "No" }}</dd></div>
+        </dl>
+    </div>
+
+    <div class="bg-gray-800 border border-gray-700 rounded-xl p-6">
+        <h2 class="text-white font-semibold mb-4">Emergency Contact</h2>
+        <dl class="space-y-3 text-sm">
+            <div class="flex justify-between"><dt class="text-gray-400">Name</dt><dd class="text-white">{{ staff_member.emergency_contact_name or "—" }}</dd></div>
+            <div class="flex justify-between"><dt class="text-gray-400">Phone</dt><dd class="text-white">{{ staff_member.emergency_contact_phone or "—" }}</dd></div>
+        </dl>
+    </div>
+</div>
+{% endblock %}
