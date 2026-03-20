@@ -13,12 +13,14 @@
 - [x] GitHub repo created (Rickybarton138/primehaul-office)
 - [ ] Tests: health, auth
 
-## Sprint 2: Staff, Vehicles, Diary
-- [ ] staff_members model + CRUD
-- [ ] vehicles model + CRUD
-- [ ] diary_events model + calendar API
-- [ ] Admin pages: staff list, vehicle fleet, calendar view
-- [ ] Alembic migration
+## Sprint 2: Staff, Vehicles, Diary ✅
+- [x] staff_routes.py: list, add, edit, detail, toggle, optional login creation
+- [x] vehicle_routes.py: list, add, edit, detail, toggle, MOT/insurance/tax warnings
+- [x] diary_routes.py: calendar page, events JSON API, create/delete, daily briefing
+- [x] FullCalendar 6.1 integration (dark theme, month/week/day/list views)
+- [x] base_app.html shared nav template + dashboard refactored
+- [x] 11 new templates (3 staff, 3 vehicles, 2 diary, 1 base_app, dashboard rewrite)
+- [ ] Alembic migration (run on deploy)
 
 ## Sprint 3: Jobs, Crew, Materials
 - [ ] job_assignments + crew_assignments models
