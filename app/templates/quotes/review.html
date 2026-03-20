@@ -1,0 +1,187 @@
+{% extends "base_app.html" %}
+{% set active_nav = "quote" %}
+{% block title %}{{ quote.quote_ref }} — Review Quote{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+    <div>
+        <a href="/quotes" class="text-gray-500 hover:text-gray-300 text-sm">&larr; All Quotes</a>
+        <h1 class="text-2xl font-bold text-white mt-1">{{ quote.quote_ref }}</h1>
+        <p class="text-gray-400 text-sm">{{ quote.customer_name }} &middot; £{{ "%.2f"|format(quote.total_pence / 100) }} inc. VAT</p>
+    </div>
+    <div class="flex gap-2">
+        <span class="inline-block px-3 py-1.5 rounded-lg text-sm font-medium
+            {% if quote.status == 'draft' %}bg-gray-600/30 text-gray-400
+            {% elif quote.status == 'approved' %}bg-blue-500/20 text-blue-400
+            {% elif quote.status == 'sent' %}bg-purple-500/20 text-purple-400
+            {% elif quote.status == 'accepted' %}bg-green-500/20 text-green-400
+            {% else %}bg-gray-600/30 text-gray-400{% endif %}">{{ quote.status|capitalize }}</span>
+    </div>
+</div>
+
+<div class="grid lg:grid-cols-3 gap-6">
+    <div class="lg:col-span-2 space-y-4">
+        <!-- Customer & Location Summary -->
+        <div class="bg-gray-800 border border-gray-700 rounded-xl p-5">
+            <div class="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                    <div class="text-gray-500 text-xs mb-1">Customer</div>
+                    <div class="text-white font-medium">{{ quote.customer_name }}</div>
+                    <div class="text-gray-400">{{ quote.customer_email or "" }}</div>
+                    <div class="text-gray-400">{{ quote.customer_phone or "" }}</div>
+                </div>
+                <div>
+                    <div class="text-gray-500 text-xs mb-1">Move</div>
+                    <div class="text-white">{{ quote.pickup_postcode or "" }} &rarr; {{ quote.dropoff_postcode or "" }}</div>
+                    <div class="text-gray-400">{{ quote.total_cbm or 0 }} CBM &middot; {{ quote.num_vans or 1 }} van(s) &middot; {{ quote.distance_miles or 0 }} mi</div>
+                    <div class="text-gray-400">{{ "Full packing service" if quote.packing_required else "Load & unload only" }}</div>
+                    {% if quote.move_date %}<div class="text-gray-400">Move date: {{ quote.move_date }}</div>{% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Line Items (editable) -->
+        <div class="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-700 flex items-center justify-between">
+                <h2 class="text-white font-semibold">Line Items</h2>
+                {% if quote.status == 'draft' %}
+                <span class="text-gray-500 text-xs">Click any row to edit</span>
+                {% endif %}
+            </div>
+            <table class="w-full">
+                <thead>
+                    <tr class="text-gray-400 text-xs border-b border-gray-700">
+                        <th class="text-left px-6 py-2 font-medium">Description</th>
+                        <th class="text-center px-4 py-2 font-medium w-20">Qty</th>
+                        <th class="text-right px-4 py-2 font-medium w-28">Unit Price</th>
+                        <th class="text-right px-6 py-2 font-medium w-28">Total</th>
+                        {% if quote.status == 'draft' %}<th class="w-16"></th>{% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for line in quote.line_items or [] %}
+                    <tr class="border-b border-gray-700/50 group" id="line-{{ loop.index0 }}">
+                        {% if quote.status == 'draft' %}
+                        <td colspan="5" class="px-0">
+                            <form method="POST" action="/quotes/{{ quote.id }}/update-line" class="flex items-center">
+                                <input type="hidden" name="line_index" value="{{ loop.index0 }}">
+                                <input type="text" name="description" value="{{ line.description }}" class="flex-1 bg-transparent px-6 py-2.5 text-white text-sm focus:bg-gray-700/50 focus:outline-none">
+                                <input type="text" name="qty" value="{{ line.qty }}" class="w-20 bg-transparent px-4 py-2.5 text-white text-sm text-center focus:bg-gray-700/50 focus:outline-none">
+                                <input type="number" name="unit_price" step="0.01" value="{{ line.unit_price }}" class="w-28 bg-transparent px-4 py-2.5 text-white text-sm text-right focus:bg-gray-700/50 focus:outline-none">
+                                <input type="number" name="total" step="0.01" value="{{ line.total }}" class="w-28 bg-transparent px-6 py-2.5 text-white text-sm text-right font-medium focus:bg-gray-700/50 focus:outline-none">
+                                <div class="w-16 flex gap-1 px-2">
+                                    <button type="submit" class="text-prime text-xs opacity-0 group-hover:opacity-100 hover:underline">Save</button>
+                                </div>
+                            </form>
+                            <form method="POST" action="/quotes/{{ quote.id }}/remove-line" class="hidden group-hover:inline absolute right-2">
+                                <input type="hidden" name="line_index" value="{{ loop.index0 }}">
+                            </form>
+                        </td>
+                        {% else %}
+                        <td class="px-6 py-2.5 text-white text-sm">{{ line.description }}</td>
+                        <td class="px-4 py-2.5 text-white text-sm text-center">{{ line.qty }}</td>
+                        <td class="px-4 py-2.5 text-white text-sm text-right">£{{ "%.2f"|format(line.unit_price) }}</td>
+                        <td class="px-6 py-2.5 text-white text-sm text-right font-medium">£{{ "%.2f"|format(line.total) }}</td>
+                        {% endif %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            {% if quote.status == 'draft' %}
+            <!-- Add Line -->
+            <div class="px-6 py-3 border-t border-gray-700 bg-gray-700/20">
+                <form method="POST" action="/quotes/{{ quote.id }}/add-line" class="flex items-center gap-2">
+                    <input type="text" name="description" placeholder="Add line item..." required class="flex-1 bg-gray-700 border border-gray-600 rounded px-3 py-1.5 text-white text-sm focus:border-prime focus:outline-none">
+                    <input type="text" name="qty" placeholder="Qty" class="w-16 bg-gray-700 border border-gray-600 rounded px-3 py-1.5 text-white text-sm text-center focus:border-prime focus:outline-none">
+                    <input type="number" name="unit_price" step="0.01" placeholder="Unit £" class="w-24 bg-gray-700 border border-gray-600 rounded px-3 py-1.5 text-white text-sm text-right focus:border-prime focus:outline-none">
+                    <input type="number" name="total" step="0.01" placeholder="Total £" required class="w-24 bg-gray-700 border border-gray-600 rounded px-3 py-1.5 text-white text-sm text-right focus:border-prime focus:outline-none">
+                    <button type="submit" class="bg-prime text-prime-dark px-3 py-1.5 rounded text-sm font-medium hover:bg-green-300">Add</button>
+                </form>
+            </div>
+            {% endif %}
+
+            <!-- Totals -->
+            <div class="px-6 py-4 border-t border-gray-700">
+                <div class="flex justify-end">
+                    <div class="w-64 space-y-1.5 text-sm">
+                        <div class="flex justify-between"><span class="text-gray-400">Subtotal</span><span class="text-white">£{{ "%.2f"|format(quote.subtotal_pence / 100) }}</span></div>
+                        <div class="flex justify-between"><span class="text-gray-400">VAT (20%)</span><span class="text-white">£{{ "%.2f"|format(quote.vat_pence / 100) }}</span></div>
+                        <div class="flex justify-between border-t border-gray-600 pt-1.5"><span class="text-prime font-bold">Total</span><span class="text-prime font-bold text-lg">£{{ "%.2f"|format(quote.total_pence / 100) }}</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% if quote.notes %}
+        <div class="bg-gray-800 border border-gray-700 rounded-xl p-5">
+            <h3 class="text-gray-400 text-xs uppercase tracking-wide mb-2">Internal Notes</h3>
+            <p class="text-white text-sm">{{ quote.notes }}</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Sidebar: Actions -->
+    <div>
+        <div class="sticky top-4 space-y-4">
+            <!-- Status & Actions -->
+            <div class="bg-gray-800 border border-gray-700 rounded-xl p-6 space-y-3">
+                <h3 class="text-white font-semibold">Actions</h3>
+
+                {% if quote.status == 'draft' %}
+                <p class="text-gray-400 text-sm">Review the line items above. Edit any amounts, add or remove lines. When ready, approve to lock the quote.</p>
+                <form method="POST" action="/quotes/{{ quote.id }}/approve">
+                    <button type="submit" class="w-full bg-blue-600 text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-blue-500 transition">
+                        Approve Quote
+                    </button>
+                </form>
+                {% endif %}
+
+                {% if quote.status == 'approved' %}
+                <p class="text-gray-400 text-sm">Quote approved{% if quote.approved_at %} on {{ quote.approved_at.strftime('%d %b %Y %H:%M') }}{% endif %}. Ready to send to customer.</p>
+                <a href="/quotes/{{ quote.id }}/pdf" target="_blank" class="block w-full bg-gray-700 text-white px-4 py-2.5 rounded-lg text-sm text-center hover:bg-gray-600 transition">
+                    Preview PDF
+                </a>
+                {% if quote.customer_email %}
+                <form method="POST" action="/quotes/{{ quote.id }}/send">
+                    <button type="submit" class="w-full bg-prime text-prime-dark px-4 py-2.5 rounded-lg text-sm font-bold hover:bg-green-300 transition">
+                        Send to {{ quote.customer_email }}
+                    </button>
+                </form>
+                {% else %}
+                <p class="text-red-400 text-xs">No customer email — cannot send.</p>
+                {% endif %}
+                {% endif %}
+
+                {% if quote.status == 'sent' %}
+                <p class="text-gray-400 text-sm">Sent to {{ quote.customer_email }} on {{ quote.sent_at.strftime('%d %b %Y %H:%M') if quote.sent_at else 'N/A' }}.</p>
+                <a href="/quotes/{{ quote.id }}/pdf" target="_blank" class="block w-full bg-gray-700 text-white px-4 py-2.5 rounded-lg text-sm text-center hover:bg-gray-600 transition">
+                    Download PDF
+                </a>
+                {% endif %}
+
+                {% if quote.status == 'accepted' %}
+                <p class="text-green-400 text-sm font-medium">Customer accepted this quote.</p>
+                {% endif %}
+
+                <!-- Always show PDF download -->
+                {% if quote.status not in ['approved', 'sent'] %}
+                <a href="/quotes/{{ quote.id }}/pdf" target="_blank" class="block w-full bg-gray-700 text-white px-4 py-2.5 rounded-lg text-sm text-center hover:bg-gray-600 transition">
+                    Preview PDF
+                </a>
+                {% endif %}
+            </div>
+
+            <!-- Quote Info -->
+            <div class="bg-gray-800 border border-gray-700 rounded-xl p-6">
+                <h3 class="text-white font-semibold mb-3">Details</h3>
+                <dl class="space-y-2 text-sm">
+                    <div class="flex justify-between"><dt class="text-gray-400">Reference</dt><dd class="text-white font-mono">{{ quote.quote_ref }}</dd></div>
+                    <div class="flex justify-between"><dt class="text-gray-400">Created</dt><dd class="text-white">{{ quote.created_at.strftime('%d %b %Y') if quote.created_at else '' }}</dd></div>
+                    <div class="flex justify-between"><dt class="text-gray-400">Valid until</dt><dd class="text-white">{{ quote.valid_until if quote.valid_until else 'N/A' }}</dd></div>
+                </dl>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

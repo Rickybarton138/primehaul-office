@@ -381,6 +381,60 @@ class ReviewRequest(Base):
 
 
 # ──────────────────────────────────────────────
+# Quotes
+# ──────────────────────────────────────────────
+
+class Quote(Base):
+    __tablename__ = "quotes"
+
+    id = Column(String(36), primary_key=True, default=new_uuid)
+    company_id = Column(String(36), ForeignKey("companies.id"), nullable=False)
+    job_assignment_id = Column(String(36), ForeignKey("job_assignments.id"), nullable=True)
+    quote_ref = Column(String(20), nullable=False)  # e.g. Q-2026-0042
+
+    # Customer
+    customer_name = Column(String(255), nullable=False)
+    customer_email = Column(String(255))
+    customer_phone = Column(String(50))
+
+    # Locations
+    pickup_address = Column(Text)
+    pickup_postcode = Column(String(20))
+    dropoff_address = Column(Text)
+    dropoff_postcode = Column(String(20))
+
+    # Job details
+    total_cbm = Column(Numeric(10, 2))
+    distance_miles = Column(Numeric(10, 2))
+    num_vans = Column(Integer, default=1)
+    packing_required = Column(Boolean, default=False)
+    move_date = Column(Date)
+
+    # Line items (JSON array of {description, qty, unit_price, total})
+    line_items = Column(JSON, default=list)
+
+    # Totals (pence)
+    subtotal_pence = Column(Integer, nullable=False, default=0)
+    vat_pence = Column(Integer, nullable=False, default=0)
+    total_pence = Column(Integer, nullable=False, default=0)
+
+    # Workflow: draft → reviewed → approved → sent → accepted → expired
+    status = Column(String(20), default="draft")
+    created_by_user_id = Column(String(36), ForeignKey("users.id"))
+    approved_by_user_id = Column(String(36), ForeignKey("users.id"), nullable=True)
+    approved_at = Column(DateTime)
+    sent_at = Column(DateTime)
+    valid_until = Column(Date)
+    customer_accepted_at = Column(DateTime)
+
+    notes = Column(Text)  # internal notes for reviewer
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    company = relationship("Company")
+
+
+# ──────────────────────────────────────────────
 # Operational Logs
 # ──────────────────────────────────────────────
 
