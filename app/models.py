@@ -45,6 +45,9 @@ class Company(Base):
     trial_ends_at = Column(DateTime)
     max_users = Column(Integer, default=10)
 
+    # Pricing tariff (JSON override of DEFAULT_TARIFF)
+    pricing_tariff = Column(JSON, default=dict)
+
     # Franchise fields
     is_franchise = Column(Boolean, default=False)
     franchise_region = Column(String(100))

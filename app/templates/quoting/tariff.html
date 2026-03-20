@@ -1,0 +1,117 @@
+{% extends "base_app.html" %}
+{% set active_nav = "jobs" %}
+{% block title %}Charges Tariff — {{ company.company_name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl">
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-white">Charges Tariff</h1>
+            <p class="text-gray-400 text-sm">Set your company's rates. These are used by the <a href="/quote-calculator" class="text-prime hover:underline">Quote Calculator</a>.</p>
+        </div>
+    </div>
+
+    <form method="POST" action="/tariff" class="space-y-6">
+        <!-- Base Rates -->
+        <div class="bg-gray-800 border border-gray-700 rounded-xl p-6">
+            <h2 class="text-white font-semibold mb-4">Base Rates</h2>
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {% for name, label, step in [("base_fee","Base / Callout Fee (£)","1"),("price_per_cbm","Price per CBM (£)","0.5"),("bulky_item_fee","Bulky Item Fee (£)","1"),("fragile_item_fee","Fragile Item Fee (£)","1"),("weight_threshold_kg","Weight Threshold (kg)","100"),("price_per_kg_over","£ per kg over threshold","0.1")] %}
+                <div>
+                    <label class="block text-gray-400 text-xs mb-1">{{ label }}</label>
+                    <input type="number" name="{{ name }}" step="{{ step }}" value="{{ tariff[name] }}"
+                        class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:border-prime focus:outline-none">
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Distance -->
+        <div class="bg-gray-800 border border-gray-700 rounded-xl p-6">
+            <h2 class="text-white font-semibold mb-4">Distance</h2>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-gray-400 text-xs mb-1">Free Miles</label>
+                    <input type="number" name="free_miles" value="{{ tariff.free_miles }}" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:border-prime focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-gray-400 text-xs mb-1">£ per mile (over free)</label>
+                    <input type="number" name="price_per_mile" step="0.1" value="{{ tariff.price_per_mile }}" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:border-prime focus:outline-none">
+                </div>
+            </div>
+        </div>
+
+        <!-- Access Surcharges -->
+        <div class="bg-gray-800 border border-gray-700 rounded-xl p-6">
+            <h2 class="text-white font-semibold mb-4">Access Surcharges</h2>
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {% for name, label in [("price_per_floor","Per Floor (£)"),("no_lift_surcharge","No Lift (£)"),("parking_street","Street Parking (£)"),("parking_permit","Permit Zone (£)"),("parking_limited","Limited Parking (£)"),("parking_distance_per_50m","Per 50m Carry (£)"),("narrow_access_fee","Narrow Access (£)"),("time_restriction_fee","Time Restriction (£)"),("booking_required_fee","Building Approval (£)"),("outdoor_steps_per_5","Per 5 Steps (£)"),("outdoor_path_fee","Outdoor Path (£)")] %}
+                <div>
+                    <label class="block text-gray-400 text-xs mb-1">{{ label }}</label>
+                    <input type="number" name="{{ name }}" step="1" value="{{ tariff[name] }}"
+                        class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:border-prime focus:outline-none">
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Labour -->
+        <div class="bg-gray-800 border border-gray-700 rounded-xl p-6">
+            <h2 class="text-white font-semibold mb-4">Labour</h2>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {% for name, label, step in [("labour_rate_per_hour","Rate/hr/person (£)","1"),("min_crew","Min Crew Size","1"),("cbm_per_hour","CBM per hour (loading)","0.5"),("min_labour_hours","Min Labour Hours","0.5")] %}
+                <div>
+                    <label class="block text-gray-400 text-xs mb-1">{{ label }}</label>
+                    <input type="number" name="{{ name }}" step="{{ step }}" value="{{ tariff[name] }}"
+                        class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:border-prime focus:outline-none">
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Packing Materials -->
+        <div class="bg-gray-800 border border-gray-700 rounded-xl p-6">
+            <h2 class="text-white font-semibold mb-4">Packing Materials</h2>
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {% for name, label in [("small_box","Small Box (£)"),("medium_box","Medium Box (£)"),("large_box","Large Box (£)"),("wardrobe_box","Wardrobe Box (£)"),("mattress_cover","Mattress Cover (£)"),("packing_labour_per_hour","Packing Service £/hr")] %}
+                <div>
+                    <label class="block text-gray-400 text-xs mb-1">{{ label }}</label>
+                    <input type="number" name="{{ name }}" step="0.5" value="{{ tariff[name] }}"
+                        class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:border-prime focus:outline-none">
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- VAT & Range -->
+        <div class="bg-gray-800 border border-gray-700 rounded-xl p-6">
+            <h2 class="text-white font-semibold mb-4">VAT & Estimate Range</h2>
+            <div class="grid grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-gray-400 text-xs mb-1">VAT Rate</label>
+                    <input type="number" name="vat_rate" step="0.01" value="{{ tariff.vat_rate }}"
+                        class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:border-prime focus:outline-none">
+                    <p class="text-gray-600 text-xs mt-1">0.20 = 20%</p>
+                </div>
+                <div>
+                    <label class="block text-gray-400 text-xs mb-1">Low Multiplier</label>
+                    <input type="number" name="low_multiplier" step="0.01" value="{{ tariff.low_multiplier }}"
+                        class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:border-prime focus:outline-none">
+                    <p class="text-gray-600 text-xs mt-1">0.90 = -10%</p>
+                </div>
+                <div>
+                    <label class="block text-gray-400 text-xs mb-1">High Multiplier</label>
+                    <input type="number" name="high_multiplier" step="0.01" value="{{ tariff.high_multiplier }}"
+                        class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:border-prime focus:outline-none">
+                    <p class="text-gray-600 text-xs mt-1">1.15 = +15%</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex gap-3">
+            <button type="submit" class="bg-prime text-prime-dark font-semibold px-6 py-2.5 rounded-lg hover:bg-green-300 transition">Save Tariff</button>
+            <a href="/quote-calculator" class="text-gray-400 hover:text-white px-6 py-2.5 rounded-lg border border-gray-600 text-sm">Open Calculator</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
