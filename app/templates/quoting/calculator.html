@@ -1,46 +1,51 @@
 {% extends "base_app.html" %}
-{% set active_nav = "jobs" %}
+{% set active_nav = "quote" %}
 {% block title %}Quote Calculator — {{ company.company_name }}{% endblock %}
 
 {% block content %}
 <div class="flex items-center justify-between mb-6">
     <div>
         <h1 class="text-2xl font-bold text-white">Quote Calculator</h1>
-        <p class="text-gray-400 text-sm">Calculate removal costs using your company tariff. <a href="/tariff" class="text-prime hover:underline">Edit tariff rates</a></p>
+        <p class="text-gray-400 text-sm">Day-rate pricing: crew + vans + packing + materials + surcharges. <a href="/tariff" class="text-prime hover:underline">Edit tariff</a></p>
     </div>
 </div>
 
 <div class="grid lg:grid-cols-3 gap-6">
-    <!-- Input Form -->
     <div class="lg:col-span-2 space-y-4">
-        <!-- Volume & Items -->
+        <!-- Job Size -->
         <div class="bg-gray-800 border border-gray-700 rounded-xl p-5">
-            <h2 class="text-white font-semibold mb-3">Volume & Items</h2>
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <h2 class="text-white font-semibold mb-3">Job Size</h2>
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
                 <div>
                     <label class="block text-gray-400 text-xs mb-1">Total CBM</label>
-                    <input type="number" id="total_cbm" step="0.1" value="0" oninput="recalc()"
+                    <input type="number" id="total_cbm" step="0.5" value="0" oninput="recalc()"
                         class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:border-prime focus:outline-none">
+                    <p class="text-gray-600 text-xs mt-1">{{ tariff.cbm_per_man_per_day|int }} CBM/man/day</p>
                 </div>
                 <div>
-                    <label class="block text-gray-400 text-xs mb-1">Weight (kg)</label>
-                    <input type="number" id="total_weight_kg" value="0" oninput="recalc()"
+                    <label class="block text-gray-400 text-xs mb-1">Distance (miles)</label>
+                    <input type="number" id="distance_miles" step="1" value="0" oninput="recalc()"
                         class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:border-prime focus:outline-none">
+                    <p class="text-gray-600 text-xs mt-1">Free under {{ tariff.local_miles_included }} mi</p>
                 </div>
                 <div>
-                    <label class="block text-gray-400 text-xs mb-1">Bulky Items</label>
-                    <input type="number" id="bulky_items" value="0" oninput="recalc()"
-                        class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:border-prime focus:outline-none">
-                </div>
-                <div>
-                    <label class="block text-gray-400 text-xs mb-1">Fragile Items</label>
-                    <input type="number" id="fragile_items" value="0" oninput="recalc()"
+                    <label class="block text-gray-400 text-xs mb-1">Number of Vans</label>
+                    <input type="number" id="num_vans" value="1" min="1" max="5" oninput="recalc()"
                         class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:border-prime focus:outline-none">
                 </div>
             </div>
-            <div class="mt-3">
-                <label class="block text-gray-400 text-xs mb-1">Distance (miles)</label>
-                <input type="number" id="distance_miles" step="0.1" value="0" oninput="recalc()" class="w-48 bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:border-prime focus:outline-none">
+            <div class="grid grid-cols-2 gap-3 mt-3">
+                <div>
+                    <label class="block text-gray-400 text-xs mb-1">Crew override (0 = auto)</label>
+                    <input type="number" id="crew_override" value="0" min="0" oninput="recalc()"
+                        class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:border-prime focus:outline-none">
+                </div>
+                <div class="flex items-end pb-1">
+                    <label class="flex items-center gap-2 text-gray-300 text-sm">
+                        <input type="checkbox" id="packing_required" onchange="recalc()" class="rounded">
+                        Full packing service
+                    </label>
+                </div>
             </div>
         </div>
 
@@ -52,16 +57,11 @@
                     <label class="block text-gray-400 text-xs mb-1">Floor</label>
                     <input type="number" id="pickup_floors" value="0" min="0" oninput="recalc()" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:border-prime focus:outline-none">
                 </div>
-                <div class="flex items-end pb-2">
-                    <label class="flex items-center gap-2 text-gray-400 text-xs"><input type="checkbox" id="pickup_has_lift" onchange="recalc()"> Has lift</label>
-                </div>
+                <div class="flex items-end pb-2"><label class="flex items-center gap-2 text-gray-400 text-xs"><input type="checkbox" id="pickup_has_lift" onchange="recalc()"> Has lift</label></div>
                 <div>
                     <label class="block text-gray-400 text-xs mb-1">Parking</label>
                     <select id="pickup_parking" onchange="recalc()" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:border-prime focus:outline-none">
-                        <option value="driveway">Driveway (free)</option>
-                        <option value="street">Street (£{{ tariff.parking_street }})</option>
-                        <option value="permit">Permit zone (£{{ tariff.parking_permit }})</option>
-                        <option value="limited">Limited (£{{ tariff.parking_limited }})</option>
+                        <option value="driveway">Driveway</option><option value="street">Street</option><option value="permit">Permit zone</option><option value="limited">Limited</option>
                     </select>
                 </div>
                 <div>
@@ -72,10 +72,7 @@
             <div class="flex gap-4 mt-3">
                 <label class="flex items-center gap-2 text-gray-400 text-xs"><input type="checkbox" id="pickup_narrow" onchange="recalc()"> Narrow access</label>
                 <label class="flex items-center gap-2 text-gray-400 text-xs"><input type="checkbox" id="pickup_outdoor_path" onchange="recalc()"> Outdoor path</label>
-                <div class="flex items-center gap-2">
-                    <label class="text-gray-400 text-xs">Steps:</label>
-                    <input type="number" id="pickup_outdoor_steps" value="0" min="0" oninput="recalc()" class="w-16 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs text-center focus:border-prime focus:outline-none">
-                </div>
+                <div class="flex items-center gap-2"><label class="text-gray-400 text-xs">Steps:</label><input type="number" id="pickup_outdoor_steps" value="0" min="0" oninput="recalc()" class="w-16 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs text-center focus:border-prime focus:outline-none"></div>
             </div>
         </div>
 
@@ -87,16 +84,11 @@
                     <label class="block text-gray-400 text-xs mb-1">Floor</label>
                     <input type="number" id="dropoff_floors" value="0" min="0" oninput="recalc()" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:border-prime focus:outline-none">
                 </div>
-                <div class="flex items-end pb-2">
-                    <label class="flex items-center gap-2 text-gray-400 text-xs"><input type="checkbox" id="dropoff_has_lift" onchange="recalc()"> Has lift</label>
-                </div>
+                <div class="flex items-end pb-2"><label class="flex items-center gap-2 text-gray-400 text-xs"><input type="checkbox" id="dropoff_has_lift" onchange="recalc()"> Has lift</label></div>
                 <div>
                     <label class="block text-gray-400 text-xs mb-1">Parking</label>
                     <select id="dropoff_parking" onchange="recalc()" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:border-prime focus:outline-none">
-                        <option value="driveway">Driveway (free)</option>
-                        <option value="street">Street (£{{ tariff.parking_street }})</option>
-                        <option value="permit">Permit zone (£{{ tariff.parking_permit }})</option>
-                        <option value="limited">Limited (£{{ tariff.parking_limited }})</option>
+                        <option value="driveway">Driveway</option><option value="street">Street</option><option value="permit">Permit zone</option><option value="limited">Limited</option>
                     </select>
                 </div>
                 <div>
@@ -107,21 +99,27 @@
             <div class="flex gap-4 mt-3">
                 <label class="flex items-center gap-2 text-gray-400 text-xs"><input type="checkbox" id="dropoff_narrow" onchange="recalc()"> Narrow access</label>
                 <label class="flex items-center gap-2 text-gray-400 text-xs"><input type="checkbox" id="dropoff_outdoor_path" onchange="recalc()"> Outdoor path</label>
-                <div class="flex items-center gap-2">
-                    <label class="text-gray-400 text-xs">Steps:</label>
-                    <input type="number" id="dropoff_outdoor_steps" value="0" min="0" oninput="recalc()" class="w-16 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs text-center focus:border-prime focus:outline-none">
-                </div>
+                <div class="flex items-center gap-2"><label class="text-gray-400 text-xs">Steps:</label><input type="number" id="dropoff_outdoor_steps" value="0" min="0" oninput="recalc()" class="w-16 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs text-center focus:border-prime focus:outline-none"></div>
             </div>
         </div>
 
-        <!-- Packing -->
+        <!-- Materials -->
         <div class="bg-gray-800 border border-gray-700 rounded-xl p-5">
             <h2 class="text-white font-semibold mb-3">Packing Materials</h2>
-            <div class="grid grid-cols-3 md:grid-cols-6 gap-3">
-                {% for id, label, cost in [("small_boxes","Small box",tariff.small_box),("medium_boxes","Medium box",tariff.medium_box),("large_boxes","Large box",tariff.large_box),("wardrobe_boxes","Wardrobe",tariff.wardrobe_box),("mattress_covers","Mattress",tariff.mattress_cover),("packing_service_hours","Pack hrs",tariff.packing_labour_per_hour)] %}
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {% for id, label, price in [
+                    ("small_box","Small box",tariff.small_box),
+                    ("medium_box","Medium box",tariff.medium_box),
+                    ("large_box","Large box",tariff.large_box),
+                    ("wardrobe_box","Wardrobe",tariff.wardrobe_box),
+                    ("packing_paper","Paper (pack)",tariff.packing_paper),
+                    ("tape_roll","Tape roll",tariff.tape_roll),
+                    ("king_mattress_bag","King mattress",tariff.king_mattress_bag),
+                    ("single_mattress_bag","Single mattress",tariff.single_mattress_bag),
+                ] %}
                 <div>
-                    <label class="block text-gray-400 text-xs mb-1">{{ label }} <span class="text-gray-600">(£{{ "%.2f"|format(cost) }})</span></label>
-                    <input type="number" id="{{ id }}" value="0" min="0" {% if id == "packing_service_hours" %}step="0.5"{% endif %} oninput="recalc()"
+                    <label class="block text-gray-400 text-xs mb-1">{{ label }} <span class="text-gray-600">£{{ "%.2f"|format(price) }}</span></label>
+                    <input type="number" id="{{ id }}" value="0" min="0" oninput="recalc()"
                         class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm text-center focus:border-prime focus:outline-none">
                 </div>
                 {% endfor %}
@@ -129,44 +127,35 @@
         </div>
     </div>
 
-    <!-- Live Quote Result (sticky sidebar) -->
+    <!-- Sidebar: Live Quote -->
     <div>
         <div class="sticky top-4 space-y-4">
-            <!-- Big Number -->
             <div class="bg-gray-800 border border-prime/30 rounded-xl p-6 text-center">
-                <div class="text-gray-400 text-sm mb-1">Estimated Quote</div>
-                <div class="text-prime text-4xl font-bold" id="quote_range">£0 — £0</div>
+                <div class="text-gray-400 text-sm mb-1">Quote Total</div>
+                <div class="text-prime text-4xl font-bold" id="quote_total">£0.00</div>
                 <div class="text-gray-500 text-xs mt-2">inc. VAT at {{ (tariff.vat_rate * 100)|int }}%</div>
             </div>
 
-            <!-- Breakdown -->
             <div class="bg-gray-800 border border-gray-700 rounded-xl p-5">
                 <h3 class="text-white font-semibold mb-3 text-sm">Breakdown</h3>
                 <div class="space-y-1.5 text-sm" id="breakdown">
-                    <div class="flex justify-between"><span class="text-gray-400">Base fee</span><span class="text-white" id="b_base">£0</span></div>
-                    <div class="flex justify-between"><span class="text-gray-400">Volume (CBM)</span><span class="text-white" id="b_cbm">£0</span></div>
-                    <div class="flex justify-between"><span class="text-gray-400">Bulky items</span><span class="text-white" id="b_bulky">£0</span></div>
-                    <div class="flex justify-between"><span class="text-gray-400">Fragile items</span><span class="text-white" id="b_fragile">£0</span></div>
-                    <div class="flex justify-between"><span class="text-gray-400">Weight surcharge</span><span class="text-white" id="b_weight">£0</span></div>
-                    <div class="flex justify-between"><span class="text-gray-400">Distance</span><span class="text-white" id="b_distance">£0</span></div>
-                    <div class="flex justify-between"><span class="text-gray-400">Access surcharges</span><span class="text-white" id="b_access">£0</span></div>
-                    <div class="flex justify-between"><span class="text-gray-400">Labour</span><span class="text-white" id="b_labour">£0</span></div>
-                    <div class="flex justify-between"><span class="text-gray-400">Packing materials</span><span class="text-white" id="b_packing">£0</span></div>
-                    <div class="flex justify-between"><span class="text-gray-400">Packing service</span><span class="text-white" id="b_packing_labour">£0</span></div>
-                    <div class="flex justify-between border-t border-gray-700 pt-1.5 mt-1.5"><span class="text-gray-300 font-medium">Subtotal</span><span class="text-white font-medium" id="b_subtotal">£0</span></div>
-                    <div class="flex justify-between"><span class="text-gray-400">VAT ({{ (tariff.vat_rate * 100)|int }}%)</span><span class="text-white" id="b_vat">£0</span></div>
-                    <div class="flex justify-between border-t border-gray-700 pt-1.5 mt-1.5"><span class="text-prime font-bold">Total</span><span class="text-prime font-bold" id="b_total">£0</span></div>
-                </div>
-            </div>
+                    <div class="text-gray-500 text-xs uppercase tracking-wide mb-1">Move Day</div>
+                    <div class="flex justify-between"><span class="text-gray-400">Crew <span id="b_crew_info" class="text-gray-600"></span></span><span class="text-white" id="b_crew">£0</span></div>
+                    <div class="flex justify-between"><span class="text-gray-400">Vehicles <span id="b_van_info" class="text-gray-600"></span></span><span class="text-white" id="b_vans">£0</span></div>
 
-            <!-- Labour detail -->
-            <div class="bg-gray-800 border border-gray-700 rounded-xl p-5">
-                <h3 class="text-white font-semibold mb-3 text-sm">Labour Estimate</h3>
-                <div class="space-y-1.5 text-sm">
-                    <div class="flex justify-between"><span class="text-gray-400">Loading</span><span class="text-white" id="l_loading">0 hrs</span></div>
-                    <div class="flex justify-between"><span class="text-gray-400">Travel</span><span class="text-white" id="l_travel">0 hrs</span></div>
-                    <div class="flex justify-between"><span class="text-gray-400">Unloading</span><span class="text-white" id="l_unloading">0 hrs</span></div>
-                    <div class="flex justify-between border-t border-gray-700 pt-1.5 mt-1.5"><span class="text-gray-300">Total</span><span class="text-white" id="l_total">0 hrs × 0 crew</span></div>
+                    <div class="text-gray-500 text-xs uppercase tracking-wide mb-1 mt-3">Pre-Pack Day</div>
+                    <div class="flex justify-between"><span class="text-gray-400">Packers <span id="b_pack_info" class="text-gray-600"></span></span><span class="text-white" id="b_packers">£0</span></div>
+
+                    <div class="text-gray-500 text-xs uppercase tracking-wide mb-1 mt-3">Materials</div>
+                    <div class="flex justify-between"><span class="text-gray-400">Packing materials</span><span class="text-white" id="b_materials">£0</span></div>
+
+                    <div class="text-gray-500 text-xs uppercase tracking-wide mb-1 mt-3">Surcharges</div>
+                    <div class="flex justify-between"><span class="text-gray-400">Distance</span><span class="text-white" id="b_distance">£0</span></div>
+                    <div class="flex justify-between"><span class="text-gray-400">Access</span><span class="text-white" id="b_access">£0</span></div>
+
+                    <div class="flex justify-between border-t border-gray-700 pt-2 mt-3"><span class="text-gray-300 font-medium">Subtotal</span><span class="text-white font-medium" id="b_subtotal">£0</span></div>
+                    <div class="flex justify-between"><span class="text-gray-400">VAT ({{ (tariff.vat_rate * 100)|int }}%)</span><span class="text-white" id="b_vat">£0</span></div>
+                    <div class="flex justify-between border-t border-gray-700 pt-2 mt-1"><span class="text-prime font-bold">Total</span><span class="text-prime font-bold text-lg" id="b_total">£0</span></div>
                 </div>
             </div>
         </div>
@@ -182,73 +171,85 @@ function sel(id) { return document.getElementById(id).value; }
 function fmt(n) { return '£' + n.toFixed(2); }
 
 function accessCost(prefix) {
-    let cost = 0;
-    const floors = val(prefix + '_floors');
-    cost += floors * T.price_per_floor;
-    if (floors > 0 && !chk(prefix + '_has_lift')) cost += T.no_lift_surcharge;
-    const parking = sel(prefix + '_parking');
-    cost += T['parking_' + parking] || 0;
-    const dist = val(prefix + '_parking_distance');
-    if (dist > 0) cost += Math.max(1, Math.floor(dist / 50)) * T.parking_distance_per_50m;
-    if (chk(prefix + '_narrow')) cost += T.narrow_access_fee;
-    if (chk(prefix + '_outdoor_path')) cost += T.outdoor_path_fee;
-    const steps = val(prefix + '_outdoor_steps');
-    if (steps > 0) cost += (Math.floor(steps / 5) + (steps % 5 ? 1 : 0)) * T.outdoor_steps_per_5;
+    let c = 0;
+    const fl = val(prefix+'_floors');
+    c += fl * T.price_per_floor;
+    if (fl > 0 && !chk(prefix+'_has_lift')) c += T.no_lift_surcharge;
+    c += T['parking_' + sel(prefix+'_parking')] || 0;
+    const pd = val(prefix+'_parking_distance');
+    if (pd > 0) c += Math.max(1, Math.floor(pd/50)) * T.parking_distance_per_50m;
+    if (chk(prefix+'_narrow')) c += T.narrow_access_fee;
+    if (chk(prefix+'_outdoor_path')) c += T.outdoor_path_fee;
+    const st = val(prefix+'_outdoor_steps');
+    if (st > 0) c += (Math.floor(st/5) + (st%5?1:0)) * T.outdoor_steps_per_5;
+    return c;
+}
+
+function distanceCost(miles) {
+    if (miles <= T.local_miles_included) return 0;
+    let rem = miles - T.local_miles_included, cost = 0;
+    const tiers = [
+        [T.distance_tier_1_max - T.local_miles_included, T.distance_tier_1_rate],
+        [T.distance_tier_2_max - T.distance_tier_1_max, T.distance_tier_2_rate],
+        [T.distance_tier_3_max - T.distance_tier_2_max, T.distance_tier_3_rate],
+        [Infinity, T.distance_tier_4_rate],
+    ];
+    for (const [span, rate] of tiers) {
+        const m = Math.min(rem, span);
+        if (m > 0) { cost += m * rate; rem -= m; }
+        if (rem <= 0) break;
+    }
     return cost;
 }
 
 function recalc() {
-    const cbm = val('total_cbm'), weight = val('total_weight_kg');
-    const bulky = val('bulky_items'), fragile = val('fragile_items');
-    const dist = val('distance_miles');
+    const cbm = val('total_cbm'), dist = val('distance_miles'), vans = Math.max(1, val('num_vans'));
+    const crewOvr = val('crew_override');
+    const packing = chk('packing_required');
 
-    const base = T.base_fee;
-    const cbmCost = cbm * T.price_per_cbm;
-    const bulkyCost = bulky * T.bulky_item_fee;
-    const fragileCost = fragile * T.fragile_item_fee;
-    const weightCost = weight > T.weight_threshold_kg ? (weight - T.weight_threshold_kg) * T.price_per_kg_over : 0;
-    const distCost = dist > T.free_miles ? (dist - T.free_miles) * T.price_per_mile : 0;
-    const access = accessCost('pickup') + accessCost('dropoff');
+    // Crew
+    const autoCrew = cbm > 0 ? Math.max(T.min_crew, Math.ceil(cbm / T.cbm_per_man_per_day)) : T.min_crew;
+    const crew = crewOvr > 0 ? crewOvr : autoCrew;
+    const crewCost = crew * T.man_day_rate;
 
-    // Labour
-    const loadHrs = Math.max(T.min_labour_hours, cbm / T.cbm_per_hour);
-    const travelHrs = dist ? dist / 30 : 0;
-    const unloadHrs = loadHrs * 0.8;
-    const totalHrs = loadHrs + travelHrs + unloadHrs;
-    const crew = cbm < 30 ? T.min_crew : 3;
-    const labourCost = totalHrs * T.labour_rate_per_hour * crew;
+    // Vehicles
+    const vanCost = vans * T.van_day_rate;
 
     // Packing
-    const packCost = val('small_boxes') * T.small_box + val('medium_boxes') * T.medium_box
-        + val('large_boxes') * T.large_box + val('wardrobe_boxes') * T.wardrobe_box
-        + val('mattress_covers') * T.mattress_cover;
-    const packLabour = val('packing_service_hours') * T.packing_labour_per_hour;
+    let packerCost = 0, packers = 0, totalBoxes = 0, packable = 0;
+    if (packing) {
+        totalBoxes = val('small_box') + val('medium_box') + val('large_box');
+        packable = Math.max(0, totalBoxes - T.overnight_reserve_boxes);
+        packers = packable > 0 ? Math.max(1, Math.ceil(packable / T.max_boxes_per_packer)) : 1;
+        packerCost = packers * T.packer_day_rate;
+    }
 
-    const subtotal = base + cbmCost + bulkyCost + fragileCost + weightCost + distCost + access + labourCost + packCost + packLabour;
+    // Materials
+    let matCost = 0;
+    ['small_box','medium_box','large_box','wardrobe_box','packing_paper','tape_roll','king_mattress_bag','single_mattress_bag'].forEach(k => {
+        matCost += val(k) * (T[k] || 0);
+    });
+
+    const distCost = distanceCost(dist);
+    const access = accessCost('pickup') + accessCost('dropoff');
+
+    const subtotal = crewCost + vanCost + packerCost + matCost + distCost + access;
     const vat = subtotal * T.vat_rate;
     const total = subtotal + vat;
-    const low = Math.max(150, total * T.low_multiplier);
-    const high = total * T.high_multiplier;
 
-    document.getElementById('quote_range').textContent = fmt(low) + ' — ' + fmt(high);
-    document.getElementById('b_base').textContent = fmt(base);
-    document.getElementById('b_cbm').textContent = fmt(cbmCost);
-    document.getElementById('b_bulky').textContent = fmt(bulkyCost);
-    document.getElementById('b_fragile').textContent = fmt(fragileCost);
-    document.getElementById('b_weight').textContent = fmt(weightCost);
+    document.getElementById('quote_total').textContent = fmt(total);
+    document.getElementById('b_crew').textContent = fmt(crewCost);
+    document.getElementById('b_crew_info').textContent = crew + ' x £' + T.man_day_rate;
+    document.getElementById('b_vans').textContent = fmt(vanCost);
+    document.getElementById('b_van_info').textContent = vans + ' x £' + T.van_day_rate;
+    document.getElementById('b_packers').textContent = fmt(packerCost);
+    document.getElementById('b_pack_info').textContent = packing ? packers + ' x £' + T.packer_day_rate : 'none';
+    document.getElementById('b_materials').textContent = fmt(matCost);
     document.getElementById('b_distance').textContent = fmt(distCost);
     document.getElementById('b_access').textContent = fmt(access);
-    document.getElementById('b_labour').textContent = fmt(labourCost);
-    document.getElementById('b_packing').textContent = fmt(packCost);
-    document.getElementById('b_packing_labour').textContent = fmt(packLabour);
     document.getElementById('b_subtotal').textContent = fmt(subtotal);
     document.getElementById('b_vat').textContent = fmt(vat);
     document.getElementById('b_total').textContent = fmt(total);
-
-    document.getElementById('l_loading').textContent = loadHrs.toFixed(1) + ' hrs';
-    document.getElementById('l_travel').textContent = travelHrs.toFixed(1) + ' hrs';
-    document.getElementById('l_unloading').textContent = unloadHrs.toFixed(1) + ' hrs';
-    document.getElementById('l_total').textContent = totalHrs.toFixed(1) + ' hrs × ' + crew + ' crew';
 }
 
 recalc();

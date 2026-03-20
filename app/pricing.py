@@ -1,89 +1,85 @@
 """
 PrimeHaul Office Manager — Job Cost Calculator & Charges Tariff.
 
-Unified pricing engine for quoting removal jobs manually.
-Based on proven formulas from PrimeHaul OS + Survey, with labour + VAT.
-All rates are editable per-company via the tariff settings page.
+Day-rate pricing model matching how UK BAR-standard removal companies actually quote:
+- Crew: £X per man per day (calculated from CBM ÷ 15 CBM/man/day)
+- Packing: £X per packer per day (calculated from total boxes ÷ 60 boxes/man/day)
+- Vehicles: £X per van per day
+- Materials: itemised at customer-facing tariff prices
+- Distance surcharge: tiered per-mile over local threshold
+- Access surcharges: floors, parking, narrow, steps etc.
+- VAT: 20%
+
+NO per-CBM volume charge — crew day rate covers loading/unloading.
 """
 
+import math
+
 # ──────────────────────────────────────────────
-# Default tariff (UK averages — company can override)
+# Default tariff (editable per-company)
 # ──────────────────────────────────────────────
 
 DEFAULT_TARIFF = {
-    # Base
-    "base_fee": 250.00,
-    "price_per_cbm": 35.00,
+    # Crew & vehicles
+    "man_day_rate": 300.00,          # £300 per man per day
+    "van_day_rate": 100.00,          # £100 per van per day
+    "cbm_per_man_per_day": 15.0,     # loading capacity: 15 CBM per man per day (local)
+    "min_crew": 2,                   # minimum crew on move day
 
-    # Item surcharges
-    "bulky_item_fee": 25.00,
-    "fragile_item_fee": 15.00,
+    # Packing
+    "packer_day_rate": 300.00,       # £300 per packer per day (same as crew rate)
+    "max_boxes_per_packer": 60,      # max boxes one packer can do in a day
+    "overnight_reserve_boxes": 12,   # boxes customer needs overnight (bedding, clothes, wash kit, plates)
 
-    # Weight
-    "weight_threshold_kg": 1000,
-    "price_per_kg_over": 0.50,
+    # Distance surcharge (fuel/wear & tear)
+    "local_miles_included": 15,      # no surcharge within this radius
+    "distance_tier_1_max": 50,       # 15-50 miles
+    "distance_tier_1_rate": 1.50,    # £/mile
+    "distance_tier_2_max": 100,      # 50-100 miles
+    "distance_tier_2_rate": 2.00,
+    "distance_tier_3_max": 200,      # 100-200 miles
+    "distance_tier_3_rate": 2.50,
+    "distance_tier_4_rate": 3.00,    # 200+ miles
 
-    # Distance
-    "free_miles": 10,
-    "price_per_mile": 1.50,
-
-    # Access - Floors
+    # Access surcharges (per location)
     "price_per_floor": 15.00,
     "no_lift_surcharge": 50.00,
-
-    # Access - Parking
     "parking_driveway": 0.00,
     "parking_street": 25.00,
     "parking_permit": 40.00,
     "parking_limited": 60.00,
     "parking_distance_per_50m": 10.00,
-
-    # Access - Building
     "narrow_access_fee": 35.00,
     "time_restriction_fee": 25.00,
     "booking_required_fee": 20.00,
-
-    # Access - Outdoor
     "outdoor_steps_per_5": 15.00,
     "outdoor_path_fee": 20.00,
 
-    # Labour
-    "labour_rate_per_hour": 25.00,  # per person
-    "min_crew": 2,
-    "cbm_per_hour": 5.0,  # loading speed
-    "min_labour_hours": 2.0,
-
-    # Packing materials
+    # Packing materials (customer-facing prices)
     "small_box": 3.00,
     "medium_box": 4.00,
     "large_box": 5.00,
-    "wardrobe_box": 12.00,
-    "mattress_cover": 8.00,
-    "packing_labour_per_hour": 40.00,
+    "wardrobe_box": 16.00,
+    "packing_paper": 12.50,          # per pack
+    "tape_roll": 2.50,               # per roll
+    "king_mattress_bag": 8.00,
+    "single_mattress_bag": 5.00,
 
     # VAT
     "vat_rate": 0.20,
-
-    # Estimate range
-    "low_multiplier": 0.90,
-    "high_multiplier": 1.15,
 }
 
 
 def get_company_tariff(company, db) -> dict:
     """Get the company's tariff, falling back to defaults."""
-    from app.models import Company
     tariff = DEFAULT_TARIFF.copy()
-
-    # If company has custom tariff stored in JSON
     if hasattr(company, "pricing_tariff") and company.pricing_tariff:
         tariff.update(company.pricing_tariff)
-
     return tariff
 
 
 def calculate_access_cost(access_data: dict, tariff: dict) -> float:
-    """Calculate access difficulty surcharges."""
+    """Calculate access difficulty surcharges for one location."""
     if not access_data:
         return 0.0
 
@@ -95,8 +91,7 @@ def calculate_access_cost(access_data: dict, tariff: dict) -> float:
         cost += tariff["no_lift_surcharge"]
 
     parking = access_data.get("parking_type", "driveway")
-    parking_key = f"parking_{parking}"
-    cost += tariff.get(parking_key, 0)
+    cost += tariff.get(f"parking_{parking}", 0)
 
     parking_distance = int(access_data.get("parking_distance_m", 0) or 0)
     if parking_distance > 0:
@@ -119,122 +114,184 @@ def calculate_access_cost(access_data: dict, tariff: dict) -> float:
     return cost
 
 
-def calculate_labour_cost(total_cbm: float, distance_miles: float, tariff: dict) -> tuple[float, dict]:
-    """Calculate labour cost based on volume, distance, and crew."""
-    loading_hours = max(tariff["min_labour_hours"], total_cbm / tariff["cbm_per_hour"])
-    travel_hours = (distance_miles / 30) if distance_miles else 0
-    unloading_hours = loading_hours * 0.8
-    total_hours = loading_hours + travel_hours + unloading_hours
-    crew_size = tariff["min_crew"] if total_cbm < 30 else 3
+def calculate_distance_surcharge(distance_miles: float, tariff: dict) -> tuple[float, dict]:
+    """Calculate tiered distance/fuel surcharge for longer moves."""
+    local = tariff["local_miles_included"]
+    if distance_miles <= local:
+        return 0.0, {"chargeable_miles": 0, "tier": "local", "surcharge": 0}
 
-    cost = total_hours * tariff["labour_rate_per_hour"] * crew_size
+    remaining = distance_miles - local
+    cost = 0.0
+    tier_breakdown = []
+
+    # Tier 1
+    t1_max = tariff["distance_tier_1_max"] - local
+    t1_miles = min(remaining, t1_max)
+    if t1_miles > 0:
+        t1_cost = t1_miles * tariff["distance_tier_1_rate"]
+        cost += t1_cost
+        tier_breakdown.append({"miles": round(t1_miles, 1), "rate": tariff["distance_tier_1_rate"], "cost": round(t1_cost, 2)})
+        remaining -= t1_miles
+
+    # Tier 2
+    t2_max = tariff["distance_tier_2_max"] - tariff["distance_tier_1_max"]
+    t2_miles = min(remaining, t2_max)
+    if t2_miles > 0:
+        t2_cost = t2_miles * tariff["distance_tier_2_rate"]
+        cost += t2_cost
+        tier_breakdown.append({"miles": round(t2_miles, 1), "rate": tariff["distance_tier_2_rate"], "cost": round(t2_cost, 2)})
+        remaining -= t2_miles
+
+    # Tier 3
+    t3_max = tariff["distance_tier_3_max"] - tariff["distance_tier_2_max"]
+    t3_miles = min(remaining, t3_max)
+    if t3_miles > 0:
+        t3_cost = t3_miles * tariff["distance_tier_3_rate"]
+        cost += t3_cost
+        tier_breakdown.append({"miles": round(t3_miles, 1), "rate": tariff["distance_tier_3_rate"], "cost": round(t3_cost, 2)})
+        remaining -= t3_miles
+
+    # Tier 4 (200+)
+    if remaining > 0:
+        t4_cost = remaining * tariff["distance_tier_4_rate"]
+        cost += t4_cost
+        tier_breakdown.append({"miles": round(remaining, 1), "rate": tariff["distance_tier_4_rate"], "cost": round(t4_cost, 2)})
 
     return cost, {
-        "loading_hours": round(loading_hours, 1),
-        "travel_hours": round(travel_hours, 1),
-        "unloading_hours": round(unloading_hours, 1),
-        "total_hours": round(total_hours, 1),
-        "crew_size": crew_size,
-        "rate_per_hour": tariff["labour_rate_per_hour"],
+        "chargeable_miles": round(distance_miles - local, 1),
+        "tiers": tier_breakdown,
+        "surcharge": round(cost, 2),
     }
 
 
 def calculate_job_cost(
     total_cbm: float = 0,
-    total_weight_kg: float = 0,
-    bulky_items: int = 0,
-    fragile_items: int = 0,
     distance_miles: float = 0,
+    num_vans: int = 1,
+    # Packing
+    packing_required: bool = False,
+    materials: dict = None,
+    # Access
     pickup_access: dict = None,
     dropoff_access: dict = None,
-    packing_boxes: dict = None,
-    packing_service_hours: float = 0,
+    # Overrides
+    crew_override: int = 0,
+    packer_override: int = 0,
     tariff: dict = None,
 ) -> dict:
     """
-    Calculate full job cost with breakdown.
+    Calculate full job cost using day-rate model.
 
-    Returns dict with estimate_low, estimate_high, and detailed breakdown.
+    Crew size auto-calculated from CBM ÷ 15 CBM/man/day.
+    Packer count auto-calculated from total boxes ÷ 60 boxes/man/day.
     All amounts in GBP (not pence).
     """
     if tariff is None:
         tariff = DEFAULT_TARIFF.copy()
+    if materials is None:
+        materials = {}
 
-    # Base fee
-    base = tariff["base_fee"]
+    # ── MOVE DAY CREW ──
+    cbm_per_man = tariff["cbm_per_man_per_day"]
+    auto_crew = max(tariff["min_crew"], math.ceil(total_cbm / cbm_per_man)) if total_cbm > 0 else tariff["min_crew"]
+    crew_count = crew_override if crew_override > 0 else auto_crew
+    crew_cost = crew_count * tariff["man_day_rate"]
 
-    # Volume
-    cbm_cost = total_cbm * tariff["price_per_cbm"]
+    # ── VEHICLES ──
+    vehicle_count = max(1, num_vans)
+    vehicle_cost = vehicle_count * tariff["van_day_rate"]
 
-    # Item surcharges
-    bulky_cost = bulky_items * tariff["bulky_item_fee"]
-    fragile_cost = fragile_items * tariff["fragile_item_fee"]
+    # ── PRE-PACK DAY ──
+    packer_count = 0
+    packing_labour_cost = 0.0
+    pack_detail = {}
+    if packing_required:
+        total_boxes = sum(
+            materials.get(k, 0) for k in ["small_box", "medium_box", "large_box"]
+        )
+        # Subtract overnight reserve — these get done on move morning by crew
+        packable_day_before = max(0, total_boxes - tariff["overnight_reserve_boxes"])
+        auto_packers = max(1, math.ceil(packable_day_before / tariff["max_boxes_per_packer"])) if packable_day_before > 0 else 1
+        packer_count = packer_override if packer_override > 0 else auto_packers
+        packing_labour_cost = packer_count * tariff["packer_day_rate"]
 
-    # Weight overage
-    weight_cost = 0.0
-    if total_weight_kg > tariff["weight_threshold_kg"]:
-        weight_cost = (total_weight_kg - tariff["weight_threshold_kg"]) * tariff["price_per_kg_over"]
+        pack_detail = {
+            "total_boxes": total_boxes,
+            "overnight_reserve": tariff["overnight_reserve_boxes"],
+            "packable_day_before": packable_day_before,
+            "packers_needed": packer_count,
+            "rate_per_packer": tariff["packer_day_rate"],
+        }
 
-    # Distance
-    distance_cost = 0.0
-    if distance_miles > tariff["free_miles"]:
-        distance_cost = (distance_miles - tariff["free_miles"]) * tariff["price_per_mile"]
+    # ── MATERIALS ──
+    materials_cost = 0.0
+    materials_breakdown = {}
+    material_keys = [
+        "small_box", "medium_box", "large_box", "wardrobe_box",
+        "packing_paper", "tape_roll", "king_mattress_bag", "single_mattress_bag",
+    ]
+    for key in material_keys:
+        qty = materials.get(key, 0)
+        if qty and key in tariff:
+            line_cost = qty * tariff[key]
+            materials_cost += line_cost
+            materials_breakdown[key] = {
+                "qty": qty,
+                "unit_price": tariff[key],
+                "total": round(line_cost, 2),
+            }
 
-    # Access surcharges
+    # ── DISTANCE SURCHARGE ──
+    distance_cost, distance_detail = calculate_distance_surcharge(distance_miles, tariff)
+
+    # ── ACCESS SURCHARGES ──
     pickup_access_cost = calculate_access_cost(pickup_access or {}, tariff)
     dropoff_access_cost = calculate_access_cost(dropoff_access or {}, tariff)
     access_cost = pickup_access_cost + dropoff_access_cost
 
-    # Labour
-    labour_cost, labour_detail = calculate_labour_cost(total_cbm, distance_miles, tariff)
-
-    # Packing materials
-    packing_material_cost = 0.0
-    packing_detail = {}
-    if packing_boxes:
-        for box_type, qty in packing_boxes.items():
-            if qty and box_type in tariff:
-                packing_material_cost += qty * tariff[box_type]
-                packing_detail[box_type] = {"qty": qty, "unit_cost": tariff[box_type], "total": qty * tariff[box_type]}
-
-    # Packing service labour
-    packing_labour_cost = packing_service_hours * tariff["packing_labour_per_hour"]
-
-    # Subtotal (before VAT)
-    subtotal = (
-        base + cbm_cost + bulky_cost + fragile_cost + weight_cost
-        + distance_cost + access_cost + labour_cost
-        + packing_material_cost + packing_labour_cost
-    )
-
-    # VAT
+    # ── TOTALS ──
+    subtotal = crew_cost + vehicle_cost + packing_labour_cost + materials_cost + distance_cost + access_cost
     vat = subtotal * tariff["vat_rate"]
     total = subtotal + vat
 
-    # Estimate range
-    estimate_low = max(150, round(total * tariff["low_multiplier"], 2))
-    estimate_high = round(total * tariff["high_multiplier"], 2)
-
     return {
-        "estimate_low": estimate_low,
-        "estimate_high": estimate_high,
-        "estimate_low_pence": int(estimate_low * 100),
-        "estimate_high_pence": int(estimate_high * 100),
+        "total": round(total, 2),
+        "total_pence": int(round(total * 100)),
+        "subtotal": round(subtotal, 2),
+        "vat": round(vat, 2),
         "breakdown": {
-            "base_fee": base,
-            "cbm_cost": round(cbm_cost, 2),
-            "bulky_surcharge": round(bulky_cost, 2),
-            "fragile_surcharge": round(fragile_cost, 2),
-            "weight_surcharge": round(weight_cost, 2),
+            # Move day
+            "crew_count": crew_count,
+            "crew_rate": tariff["man_day_rate"],
+            "crew_cost": round(crew_cost, 2),
+            "cbm": total_cbm,
+            "cbm_per_man": cbm_per_man,
+
+            # Vehicles
+            "vehicle_count": vehicle_count,
+            "vehicle_rate": tariff["van_day_rate"],
+            "vehicle_cost": round(vehicle_cost, 2),
+
+            # Packing
+            "packing_required": packing_required,
+            "packing_labour_cost": round(packing_labour_cost, 2),
+            "packing_detail": pack_detail,
+
+            # Materials
+            "materials_cost": round(materials_cost, 2),
+            "materials_breakdown": materials_breakdown,
+
+            # Distance
+            "distance_miles": distance_miles,
             "distance_cost": round(distance_cost, 2),
+            "distance_detail": distance_detail,
+
+            # Access
             "pickup_access_cost": round(pickup_access_cost, 2),
             "dropoff_access_cost": round(dropoff_access_cost, 2),
-            "access_cost_total": round(access_cost, 2),
-            "labour_cost": round(labour_cost, 2),
-            "labour_detail": labour_detail,
-            "packing_material_cost": round(packing_material_cost, 2),
-            "packing_detail": packing_detail,
-            "packing_labour_cost": round(packing_labour_cost, 2),
+            "access_cost": round(access_cost, 2),
+
+            # Totals
             "subtotal": round(subtotal, 2),
             "vat": round(vat, 2),
             "vat_rate": tariff["vat_rate"],

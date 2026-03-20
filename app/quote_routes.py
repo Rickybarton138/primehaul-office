@@ -1,6 +1,6 @@
 """
 Job Cost Calculator & Charges Tariff routes for PrimeHaul Office Manager.
-Interactive quoting tool + editable tariff settings.
+Day-rate pricing model: crew/day + vans/day + packers/day + materials + distance + access.
 """
 
 from fastapi import APIRouter, Request, Depends, Form
@@ -24,7 +24,6 @@ def quote_calculator_page(
     db: Session = Depends(get_db),
 ):
     tariff = get_company_tariff(current_user.company, db)
-
     return templates.TemplateResponse("quoting/calculator.html", {
         "request": request,
         "user": current_user,
@@ -37,11 +36,21 @@ def quote_calculator_page(
 def quote_calculate_api(
     request: Request,
     total_cbm: float = Form(0),
-    total_weight_kg: float = Form(0),
-    bulky_items: int = Form(0),
-    fragile_items: int = Form(0),
     distance_miles: float = Form(0),
-    # Pickup access
+    num_vans: int = Form(1),
+    packing_required: bool = Form(False),
+    crew_override: int = Form(0),
+    packer_override: int = Form(0),
+    # Materials
+    small_box: int = Form(0),
+    medium_box: int = Form(0),
+    large_box: int = Form(0),
+    wardrobe_box: int = Form(0),
+    packing_paper: int = Form(0),
+    tape_roll: int = Form(0),
+    king_mattress_bag: int = Form(0),
+    single_mattress_bag: int = Form(0),
+    # Access
     pickup_floors: int = Form(0),
     pickup_has_lift: bool = Form(False),
     pickup_parking: str = Form("driveway"),
@@ -49,7 +58,6 @@ def quote_calculate_api(
     pickup_narrow: bool = Form(False),
     pickup_outdoor_steps: int = Form(0),
     pickup_outdoor_path: bool = Form(False),
-    # Dropoff access
     dropoff_floors: int = Form(0),
     dropoff_has_lift: bool = Form(False),
     dropoff_parking: str = Form("driveway"),
@@ -57,59 +65,38 @@ def quote_calculate_api(
     dropoff_narrow: bool = Form(False),
     dropoff_outdoor_steps: int = Form(0),
     dropoff_outdoor_path: bool = Form(False),
-    # Packing
-    small_boxes: int = Form(0),
-    medium_boxes: int = Form(0),
-    large_boxes: int = Form(0),
-    wardrobe_boxes: int = Form(0),
-    mattress_covers: int = Form(0),
-    packing_service_hours: float = Form(0),
     current_user: User = Depends(require_role("office")),
     db: Session = Depends(get_db),
 ):
     tariff = get_company_tariff(current_user.company, db)
 
-    pickup_access = {
-        "floors": pickup_floors,
-        "has_lift": pickup_has_lift,
-        "parking_type": pickup_parking,
-        "parking_distance_m": pickup_parking_distance,
-        "narrow_access": pickup_narrow,
-        "outdoor_steps": pickup_outdoor_steps,
-        "outdoor_path": pickup_outdoor_path,
-    }
-
-    dropoff_access = {
-        "floors": dropoff_floors,
-        "has_lift": dropoff_has_lift,
-        "parking_type": dropoff_parking,
-        "parking_distance_m": dropoff_parking_distance,
-        "narrow_access": dropoff_narrow,
-        "outdoor_steps": dropoff_outdoor_steps,
-        "outdoor_path": dropoff_outdoor_path,
-    }
-
-    packing_boxes = {
-        "small_box": small_boxes,
-        "medium_box": medium_boxes,
-        "large_box": large_boxes,
-        "wardrobe_box": wardrobe_boxes,
-        "mattress_cover": mattress_covers,
-    }
-
     result = calculate_job_cost(
         total_cbm=total_cbm,
-        total_weight_kg=total_weight_kg,
-        bulky_items=bulky_items,
-        fragile_items=fragile_items,
         distance_miles=distance_miles,
-        pickup_access=pickup_access,
-        dropoff_access=dropoff_access,
-        packing_boxes=packing_boxes,
-        packing_service_hours=packing_service_hours,
+        num_vans=num_vans,
+        packing_required=packing_required,
+        materials={
+            "small_box": small_box, "medium_box": medium_box,
+            "large_box": large_box, "wardrobe_box": wardrobe_box,
+            "packing_paper": packing_paper, "tape_roll": tape_roll,
+            "king_mattress_bag": king_mattress_bag, "single_mattress_bag": single_mattress_bag,
+        },
+        pickup_access={
+            "floors": pickup_floors, "has_lift": pickup_has_lift,
+            "parking_type": pickup_parking, "parking_distance_m": pickup_parking_distance,
+            "narrow_access": pickup_narrow, "outdoor_steps": pickup_outdoor_steps,
+            "outdoor_path": pickup_outdoor_path,
+        },
+        dropoff_access={
+            "floors": dropoff_floors, "has_lift": dropoff_has_lift,
+            "parking_type": dropoff_parking, "parking_distance_m": dropoff_parking_distance,
+            "narrow_access": dropoff_narrow, "outdoor_steps": dropoff_outdoor_steps,
+            "outdoor_path": dropoff_outdoor_path,
+        },
+        crew_override=crew_override,
+        packer_override=packer_override,
         tariff=tariff,
     )
-
     return JSONResponse(result)
 
 
@@ -120,7 +107,6 @@ def tariff_page(
     db: Session = Depends(get_db),
 ):
     tariff = get_company_tariff(current_user.company, db)
-
     return templates.TemplateResponse("quoting/tariff.html", {
         "request": request,
         "user": current_user,
@@ -134,15 +120,18 @@ def tariff_update(
     request: Request,
     current_user: User = Depends(require_role("admin")),
     db: Session = Depends(get_db),
-    # All tariff fields as form inputs
-    base_fee: float = Form(250),
-    price_per_cbm: float = Form(35),
-    bulky_item_fee: float = Form(25),
-    fragile_item_fee: float = Form(15),
-    weight_threshold_kg: int = Form(1000),
-    price_per_kg_over: float = Form(0.50),
-    free_miles: int = Form(10),
-    price_per_mile: float = Form(1.50),
+    man_day_rate: float = Form(300),
+    van_day_rate: float = Form(100),
+    cbm_per_man_per_day: float = Form(15),
+    min_crew: int = Form(2),
+    packer_day_rate: float = Form(300),
+    max_boxes_per_packer: int = Form(60),
+    overnight_reserve_boxes: int = Form(12),
+    local_miles_included: int = Form(15),
+    distance_tier_1_rate: float = Form(1.50),
+    distance_tier_2_rate: float = Form(2.00),
+    distance_tier_3_rate: float = Form(2.50),
+    distance_tier_4_rate: float = Form(3.00),
     price_per_floor: float = Form(15),
     no_lift_surcharge: float = Form(50),
     parking_street: float = Form(25),
@@ -154,27 +143,26 @@ def tariff_update(
     booking_required_fee: float = Form(20),
     outdoor_steps_per_5: float = Form(15),
     outdoor_path_fee: float = Form(20),
-    labour_rate_per_hour: float = Form(25),
-    min_crew: int = Form(2),
-    cbm_per_hour: float = Form(5),
-    min_labour_hours: float = Form(2),
     small_box: float = Form(3),
     medium_box: float = Form(4),
     large_box: float = Form(5),
-    wardrobe_box: float = Form(12),
-    mattress_cover: float = Form(8),
-    packing_labour_per_hour: float = Form(40),
+    wardrobe_box: float = Form(16),
+    packing_paper: float = Form(12.50),
+    tape_roll: float = Form(2.50),
+    king_mattress_bag: float = Form(8),
+    single_mattress_bag: float = Form(5),
     vat_rate: float = Form(0.20),
-    low_multiplier: float = Form(0.90),
-    high_multiplier: float = Form(1.15),
 ):
     company = db.query(Company).filter(Company.id == current_user.company_id).first()
 
     company.pricing_tariff = {
-        "base_fee": base_fee, "price_per_cbm": price_per_cbm,
-        "bulky_item_fee": bulky_item_fee, "fragile_item_fee": fragile_item_fee,
-        "weight_threshold_kg": weight_threshold_kg, "price_per_kg_over": price_per_kg_over,
-        "free_miles": free_miles, "price_per_mile": price_per_mile,
+        "man_day_rate": man_day_rate, "van_day_rate": van_day_rate,
+        "cbm_per_man_per_day": cbm_per_man_per_day, "min_crew": min_crew,
+        "packer_day_rate": packer_day_rate, "max_boxes_per_packer": max_boxes_per_packer,
+        "overnight_reserve_boxes": overnight_reserve_boxes,
+        "local_miles_included": local_miles_included,
+        "distance_tier_1_rate": distance_tier_1_rate, "distance_tier_2_rate": distance_tier_2_rate,
+        "distance_tier_3_rate": distance_tier_3_rate, "distance_tier_4_rate": distance_tier_4_rate,
         "price_per_floor": price_per_floor, "no_lift_surcharge": no_lift_surcharge,
         "parking_driveway": 0, "parking_street": parking_street,
         "parking_permit": parking_permit, "parking_limited": parking_limited,
@@ -182,12 +170,11 @@ def tariff_update(
         "narrow_access_fee": narrow_access_fee, "time_restriction_fee": time_restriction_fee,
         "booking_required_fee": booking_required_fee,
         "outdoor_steps_per_5": outdoor_steps_per_5, "outdoor_path_fee": outdoor_path_fee,
-        "labour_rate_per_hour": labour_rate_per_hour, "min_crew": min_crew,
-        "cbm_per_hour": cbm_per_hour, "min_labour_hours": min_labour_hours,
         "small_box": small_box, "medium_box": medium_box,
         "large_box": large_box, "wardrobe_box": wardrobe_box,
-        "mattress_cover": mattress_cover, "packing_labour_per_hour": packing_labour_per_hour,
-        "vat_rate": vat_rate, "low_multiplier": low_multiplier, "high_multiplier": high_multiplier,
+        "packing_paper": packing_paper, "tape_roll": tape_roll,
+        "king_mattress_bag": king_mattress_bag, "single_mattress_bag": single_mattress_bag,
+        "vat_rate": vat_rate,
     }
     db.commit()
 
