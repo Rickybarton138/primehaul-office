@@ -58,6 +58,7 @@ from app.job_routes import router as job_router
 from app.materials_routes import router as materials_router
 from app.quote_routes import router as quote_router
 from app.quote_workflow import router as quote_workflow_router
+from app.import_routes import router as import_router
 app.include_router(staff_router)
 app.include_router(vehicle_router)
 app.include_router(diary_router)
@@ -65,6 +66,7 @@ app.include_router(job_router)
 app.include_router(materials_router)
 app.include_router(quote_router)
 app.include_router(quote_workflow_router)
+app.include_router(import_router)
 
 
 # ──────────────────────────────────────────────
