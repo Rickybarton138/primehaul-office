@@ -33,6 +33,25 @@
 - [x] 8 new templates: jobs list, form, detail + materials list, form
 - [x] Routers wired into main.py
 
+## Bonus: Quote Calculator + PDF Workflow ✅
+- [x] pricing.py: day-rate model (crew £300/man/day, vans £100/day, packers £300/day)
+- [x] Auto crew calc from CBM ÷ 15 CBM/man/day, auto packers from boxes ÷ 60/packer
+- [x] Overnight reserve (12 boxes customer needs for bedding/clothes/wash kit)
+- [x] Tiered distance surcharge (free under 15mi, then £1.50-3.00/mi in 4 tiers)
+- [x] Full materials tariff: small/medium/large/wardrobe boxes, paper, tape, king/single mattress bags
+- [x] Per-company editable tariff stored as JSON
+- [x] Live client-side calculator with sticky sidebar breakdown
+- [x] Quote workflow: calculator → save draft → review/amend lines → approve → email PDF
+- [x] PDF generator (WeasyPrint) — branded A4 with line items, totals, T&Cs
+- [x] Email with PDF attachment via Brevo SMTP
+- [x] Sequential quote refs (Q-2026-0042)
+
+## Bonus: Diary Edit/Delete + Multi-Staff ✅
+- [x] Edit event modal (populated from API on click)
+- [x] Delete event with confirmation
+- [x] Multi-staff checkboxes on add + edit (was single select)
+- [x] Event API returns resolved staff names + vehicle registration
+
 ## Sprint 4: Lead Ingestion + Reviews
 - [ ] external_lead_sources + external_leads models
 - [ ] review_requests model
